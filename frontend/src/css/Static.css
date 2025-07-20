@@ -1,0 +1,21 @@
+.Static {
+    position: fixed;
+    bottom: 0vh;
+    left: 0.3vw;
+    z-index: 1000;
+    opacity: 0.7;
+    color: #ffffff;
+  }
+
+  .Static a {
+    color: #ccff00;
+    text-decoration: underline;
+}
+
+#survey {
+	font-size: 40pt;
+}
+
+#survey a {
+    color: #fffb0b;
+}

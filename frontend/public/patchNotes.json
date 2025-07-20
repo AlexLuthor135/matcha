@@ -1,0 +1,23 @@
+[
+    {
+        "version": "v1.1.0",
+        "date": "17-06-2025",
+        "notes": [
+          "Added patch notes",
+          "Added logout button"
+        ]
+    },
+    {
+        "version": "v1.0.0",
+        "date": "12-06-2025",
+        "notes": [
+          "Weekly eval limit is calculated dynamically based on the creation date of evaluations in the past",
+          "Students can no longer book an evaluation outside of campus",
+          "Added an informational block",
+          "Added buttons to set/unset yourself for evaluation",
+          "Separate logic for internship videos to increase the pool of students picked by the algorithm"
+        ]
+      }
+    
+  ]
+  

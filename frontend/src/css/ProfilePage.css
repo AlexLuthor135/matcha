@@ -1,0 +1,126 @@
+.teams-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 24px;
+  text-align: center;
+}
+
+.teams-section:has(.teams-container:only-child) {
+  justify-content: center;
+}
+
+.teams-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100vw;
+    overflow-x: auto;
+    flex-wrap: wrap;
+    gap: 16px;
+    padding: 16px;
+    overflow-x: auto;
+  }
+  
+  .team-box {
+    border: 1px solid #ccc;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    background-color: #f9f9f9;
+    color: #000000;
+    min-width: 200px;
+    flex-shrink: 0;
+  }
+  
+.error-message {
+  background-color: #ffe0e0;
+  border: 1px solid #ff4d4d;
+  color: #b30000;
+  padding: 12px;
+  margin: 16px 0;
+  border-radius: 5px;
+}
+  
+@media (max-width: 640px) {
+  .teams-container {
+    flex-direction: column;
+    overflow-x: unset;
+  }
+
+  .team-box {
+    width: 80%;
+    max-width: 320px;
+    margin: 0 auto;
+    padding: 12px;
+  }
+
+  .teams-section {
+    gap: 16px;
+    padding: 16px;
+    padding-bottom: 48px;
+  }
+
+  .teams-section h1 {
+    font-size: 1.5rem;
+  }
+}
+
+.profile-page {
+  position: relative;
+  padding: 20px;
+}
+
+.user-info-box {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: #222;
+  color: white;
+  padding: 15px;
+  border-radius: 8px;
+  width: 260px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  z-index: 10;
+}
+
+.user-info-box .info-line {
+  white-space: nowrap;
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.user-info-box:hover {
+  background-color: #333;
+}
+
+.user-info-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.user-action-button {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background-color 0.2s ease;
+  flex: 1;
+  text-align: center;
+}
+
+.user-action-button:hover {
+  background-color: #45a049;
+}
+
+.user-action-button:disabled {
+  background-color: #888;
+  cursor: not-allowed;
+}
