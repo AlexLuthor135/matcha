@@ -26,51 +26,11 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get("SECRET_KEY", "dummy-secret-key-for-build")
 DJANGO_ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
-CLIENT_ID = os.environ.get("CLIENT_ID")
-CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
-REDIRECT_URI = os.environ.get("REDIRECT_URI")
-AUTHORIZATION_BASE_URL = os.environ.get("OAUTH_AUTH")
-TOKEN_URL = os.environ.get("OAUTH_TOKEN")
-API_BASE_URL = 'https://api.intra.42.fr'
-USER_INFO_URL = f'{API_BASE_URL}/v2/me'
 FRONTEND_URL = os.environ.get("FRONTEND_URL")
-OAUTH_SCOPE = os.environ.get("INTRA_SCOPE")
-INTRA_ENDPOINT = os.environ.get("INTRA_ENDPOINT")
-CAMPUS_ID = os.environ.get("CAMPUS_ID")
-CAMPUS_NAME = os.environ.get("CAMPUS_NAME")
-EMAIL_STRING = os.environ.get("EMAIL_STRING")
-FRIEND_LIST_SIZE = os.environ.get("FRIEND_LIST_SIZE")
-
-#WEBHOOKS
-SCALE_TEAM_CREATE = os.environ.get("SCALE_TEAM_CREATE")
-SCALE_TEAM_UPDATE = os.environ.get("SCALE_TEAM_UPDATE")
-SCALE_TEAM_DESTROY = os.environ.get("SCALE_TEAM_DESTROY")
-
-QUESTS_USER_CREATE = os.environ.get("QUESTS_USER_CREATE")
-QUESTS_USER_UPDATE = os.environ.get("QUESTS_USER_UPDATE")
-QUESTS_USER_DESTROY = os.environ.get("QUESTS_USER_DESTROY")
-
-LOCATION_CREATE = os.environ.get("LOCATION_CREATE")
-LOCATION_CLOSE = os.environ.get("LOCATION_CLOSE")
-LOCATION_DELETE = os.environ.get("LOCATION_DELETE")
-
-#SLACK
-SLACK_BOT_TOKEN = os.environ.get("SLACK_BOT_TOKEN")
-SLACK_CHANNEL_ID = os.environ.get("SLACK_CHANNEL_ID")
-SLACK_BORN2CODE_TOKEN = os.environ.get("SLACK_BORN2CODE_TOKEN")
 
 #MEDIA
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-#COLORED LOGS
-if os.getenv('DJANGO_COLORS'):
-    os.environ['DJANGO_COLORS'] = os.getenv('DJANGO_COLORS')
-else:
-    os.environ['DJANGO_COLORS'] = 'light'
-
-# INTERNAL CONFIGURATION SETTINGS
-TIME_CUTOFF_START = time(22, 0, 0)
-TIME_CUTOFF_END = time(7, 0, 0)
 
 # Must be dealt with later for safety purposes
 os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
@@ -106,8 +66,6 @@ INSTALLED_APPS = [
     'channels',
     'watchman',
     'api',
-    'intra_client',
-    'slack',
     'admins',
     'django_celery_beat',
 ]
@@ -173,7 +131,7 @@ CORS_ALLOW_METHODS = [
     "DELETE",
 ]
 CORS_ALLOW_CREDENTIALS = True
-ALLOWED_HOSTS = [f'{DJANGO_ALLOWED_HOSTS}']
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "").split(",")
 
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases

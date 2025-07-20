@@ -14,7 +14,7 @@
 # COPY --from=build /app/dist .
 # COPY --from=build /app/dist /usr/share/nginx/html
 
-# Uncomment these commands to run the Vite development server (hot reload)
+# # Uncomment these commands to run the Vite development server (hot reload)
 # EXPOSE 8081
 # CMD ["npm", "run", "dev"]
 

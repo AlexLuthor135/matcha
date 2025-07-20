@@ -1,5 +1,5 @@
 # pull official base image
-FROM python:3.11.4-slim-buster
+FROM python:3.11.4-slim-bookworm
 
 # set work directory
 WORKDIR /backend
@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED 1
 
 # install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    netcat \
+    netcat-openbsd  \
     postgresql-client \
     build-essential \
     libpq-dev \
