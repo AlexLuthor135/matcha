@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta, time
+import colorlog
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -27,13 +28,14 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 SECRET_KEY = os.environ.get("SECRET_KEY", "dummy-secret-key-for-build")
 DJANGO_ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost")
 FRONTEND_URL = os.environ.get("FRONTEND_URL")
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL")
 
 #MEDIA
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 # Must be dealt with later for safety purposes
-os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
+# os.environ['OAUTHLIB_INSECURE_TRANSPORT'] = '1'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
@@ -236,8 +238,6 @@ ASGI_APPLICATION = 'backend.asgi.application'
 #     },
 # }
 
-import colorlog
-
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -271,6 +271,15 @@ LOGGING = {
             'propagate': False,
         }
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("redis", 6379)],
+        },
+    },
 }
 
 CELERY_BROKER_URL = 'redis://redis:6379/0'

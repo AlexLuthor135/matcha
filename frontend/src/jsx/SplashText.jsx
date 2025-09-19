@@ -15,7 +15,7 @@ const suffixes = [
 ];
 
 export default function SplashText() {
-  const [text, setText] = useState("PeerSphere");
+  const [text, setText] = useState("Matcha");
   const [fade, setFade] = useState(false);
 
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function SplashText() {
       setFade(true);
       setTimeout(() => {
         const suffix = suffixes[Math.floor(Math.random() * suffixes.length)];
-        setText(`PeerSphere ${suffix}`.trim());
+        setText(`Matcha ${suffix}`.trim());
         setFade(false);
       }, 300);
     };

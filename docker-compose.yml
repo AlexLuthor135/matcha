@@ -35,8 +35,10 @@ services:
       dockerfile: Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     volumes:
-      - /srv/peersphere_media:/backend/media
-      - /srv/peersphere_static:/srv/peersphere_static
+      # - /srv/peersphere_media:/backend/media
+      # - /srv/peersphere_static:/srv/peersphere_static
+      - ~/peersphere_media:/backend/media
+      - ~/peersphere_static:/srv/peersphere_static
       - ./backend:/backend
     ports:
       - "8000:8000"
