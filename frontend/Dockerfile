@@ -19,28 +19,24 @@
 # CMD ["npm", "run", "dev"]
 
 # Stage 1: Build
-FROM node:18 AS builder
+FROM node:20 AS builder
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm install
 
 COPY . .
-RUN npm run build
+RUN npm run build -- --output-path=./dist/frontend --configuration=production
 
 # ----------------------------
 # Stage 2: Production
-FROM node:18-alpine
-WORKDIR /app
+FROM node:20-alpine
+WORKDIR /usr/share/nginx/html
 
 # Copy only what's needed
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev
+COPY --from=builder /app/dist/frontend .
 
 ENV HOST=0.0.0.0
 EXPOSE 8081
 
-CMD ["npx", "serve", "-s", "dist", "--listen", "8081", "--no-compression"]
+CMD ["npx", "serve", "-s", "./", "--listen", "8081", "--no-compression"]
