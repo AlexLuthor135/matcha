@@ -25,20 +25,13 @@ services:
       - pgadmin_data:/var/lib/pgadmin
 
   web:
-    environment:
-        - PYTHONUNBUFFERED=1
-        - FORCE_COLOR=true
-        - DJANGO_FORCE_COLOR=true
-        - DJANGO_COLORS=light
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    command: python manage.py runserver 0.0.0.0:8000
+    command: air
     volumes:
-      # - /srv/peersphere_media:/backend/media
-      # - /srv/peersphere_static:/srv/peersphere_static
-      - ~/peersphere_media:/backend/media
-      - ~/peersphere_static:/srv/peersphere_static
+      - ~/matcha_media:/backend/media
+      - ~/matcha_static:/srv/matcha_static
       - ./backend:/backend
     ports:
       - "8000:8000"
@@ -80,34 +73,6 @@ services:
         backend_network:
           ipv4_address: 172.20.0.4
 
-  celery:
-    build:
-      context: ./backend
-    command: celery -A backend worker --loglevel=info
-    volumes:
-      - ./backend:/backend
-    networks:
-      - backend_network
-    depends_on:
-      - web
-      - redis
-    env_file:
-      - ./.env
-
-  beat:
-    build:
-      context: ./backend
-    command: celery -A backend beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
-    volumes:
-      - ./backend:/backend
-    networks:
-      - backend_network
-    depends_on:
-      - web
-      - redis
-    env_file:
-      - ./.env
-
   nginx:
     image: nginx:latest
     volumes:
@@ -140,5 +105,5 @@ networks:
 volumes:
   postgres_data:
   pgadmin_data:
-  peersphere_static:
+  matcha_static:
     external: true

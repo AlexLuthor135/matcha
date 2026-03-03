@@ -1,39 +1,31 @@
 # pull official base image
-FROM python:3.11.4-slim-bookworm
+FROM golang:1.25-alpine
 
 # set work directory
 WORKDIR /backend
 
-# set environment variables
-ENV PYTHONDONTWRITEBYTECODE 1
-ENV PYTHONUNBUFFERED 1
-
 # install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    netcat-openbsd  \
-    postgresql-client \
-    build-essential \
-    libpq-dev \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk update && apk add --no-cache \
+    netcat-openbsd \
+    postgresql-client
 
-# install dependencies
-RUN pip install --upgrade pip
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
+RUN go install github.com/air-verse/air@latest
+COPY go.mod go.sum* ./
+RUN go mod download
 
-# copy entrypoint.sh
-COPY ./entrypoint.sh .
-RUN sed -i 's/\r$//g' /backend/entrypoint.sh
-RUN chmod +x /backend/entrypoint.sh
 
-# copy project
+# Copy the rest of the project
 COPY . .
 
-RUN python manage.py collectstatic --noinput
+# Copy and setup entrypoint.sh
+COPY ./entrypoint.sh /entrypoint.sh
+RUN sed -i 's/\r$//g' /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["daphne", "-u", "/tmp/daphne.sock", "backend.asgi:application"]
-# run entrypoint.sh
-ENTRYPOINT ["/backend/entrypoint.sh"]
+# Run entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
+
+# Default command runs Air for live-reloading
+CMD ["air"]
