@@ -15,7 +15,6 @@ export default function TagSelector({tags, onChange }){
 
         setSelectedTag(updated);
         onChange?.(updated);
-        console.log("TAGS : ",selectedTag)
     };
 
     return (

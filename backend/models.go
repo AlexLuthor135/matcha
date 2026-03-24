@@ -10,7 +10,7 @@ type RegisterRequest struct {
 }
 
 type LoginRequest struct {
-	Username string `json:"username"`
+	Email string `json:"email"`
 	Password string `json:"password"`
 }
 
@@ -22,7 +22,9 @@ type User struct {
 	Email string `gorm:"unique;not null"`
 	Password string `gorm:"not null"`
 	IsStaff bool `gorm:"default:false"`
+	IsCompleted bool `gorm:"default:false"`
 	Gender    string
+	Preferences    string
     Bio       string
     Interests []string `gorm:"serializer:json"`
 }

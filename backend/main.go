@@ -34,9 +34,10 @@ func main() {
 	mux.HandleFunc(pat.Post("/api/login"), loginUser)
 	mux.HandleFunc(pat.Post("/api/accounts/token/refresh/"), refreshToken)
 
-    privateMux.HandleFunc(pat.Get("/api/accounts/verify_login/"), verifyUser)
-	privateMux.HandleFunc(pat.Post("/api/accounts/logout/"), logoutUser)
-    privateMux.HandleFunc(pat.Put("/api/accounts/bio/"), updateBio)
+    privateMux.HandleFunc(pat.Get("/verify_login/"), verifyUser)
+	privateMux.HandleFunc(pat.Post("/logout/"), logoutUser)
+    privateMux.HandleFunc(pat.Put("/bio/update"), updateBio)
+	privateMux.HandleFunc(pat.Post("/bio/create"), createBio)
 
     mux.Handle(pat.New("/api/accounts/*"), privateMux)
 	fmt.Println("Starting Go server on port 8000...")

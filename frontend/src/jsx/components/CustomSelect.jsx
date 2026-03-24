@@ -3,7 +3,7 @@ import "./CustomSelect.css";
 
 export default function CustomSelect({
   options,
-  placeholder = "Выберите",
+  placeholder = "Select",
   onChange
 }) {
   const [open, setOpen] = useState(false);

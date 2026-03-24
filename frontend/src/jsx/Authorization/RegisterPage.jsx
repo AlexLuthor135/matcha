@@ -1,11 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "../components/Button";
 import { InputBlock } from "../components/InputBlock";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { passwordValidation } from "../components/Validation";
+import axiosInstance from "../AxiosInstance";
 import "./Authorization.css";
 import "../components/InputBlock.css"
-import UserProfileEditor from "../UserProfile/UserProfileEditor";
 
 export default function RegisterPage(){
 
@@ -20,7 +20,7 @@ export default function RegisterPage(){
     const navigate = useNavigate();
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
-
+    const [registered, setRegistered] = useState(false);
     function handleLoginPage(){
         navigate('/');
     };
@@ -30,45 +30,52 @@ export default function RegisterPage(){
         setUserData({ ...userData, [name]: value });
     };
 
+    useEffect(() => {
+        if (registered) {
+            navigate('/');
+        }
+    }, [registered, navigate]);
+    
     const handleRegistrationSubmit = async (e) =>{
         e.preventDefault();
 
         if(loading)
             return;
 
-        setLoading(true);
-
         if(passwordValidation(userData.password, confirmPassword)){
             setUserData({...userData, password: ''})
             setConfirmPassword('');
             return;
         }
+        if(!userData.username || !userData.password || !confirmPassword || !userData.email){
+            alert("Not all fields are filled!");
+            return;
+        }
+
+        setLoading(true);
 
 
-        // if(!username || !password || !confirmPassword || !email){
-        //     alert("Not all fields are filled!");
-        //     return;
-        // }
+        try{
+            const response = await axiosInstance.post('/backend/api/register', {
+                username: userData.username,
+                lastName: userData.lastName,
+                firstName: userData.firstName,
+                password: userData.password,
+                email: userData.email
+            });
 
-        // setLoading(true);
-
-        // try{
-            // const response = await api.post('/registration', {
-            //     username: username,
-            //     lastName: lastName,
-            //     firstName: firstName,
-            //     password: password,
-            //     email: email
-            // });
-        //     alert('SUCCESS')
-        //     navigate('/');
-        // } catch(err){
-        //     alert("FAILER");
-        // } finally {
-        //     setLoading(false);
-        // }
+            console.log('REGISTR SUCCESS : ', response)
+            // navigate('/');
+            setRegistered(true);
+        } catch(err){
+            alert("REGISTR FAILER");
+            console.log(err);
+            setLoading(false);
+        } finally {
+            setLoading(false);
+        }
         // navigate('/');
-        navigate("/testUpdate")
+        // navigate("/testUpdate")
     }
 
     return(
@@ -129,6 +136,7 @@ export default function RegisterPage(){
                         {loading ? "Loading..." : "Register"}
                     </Button>
                     <Button 
+                    type="button"
                     onClick={handleLoginPage}
                     >
                         Cancel

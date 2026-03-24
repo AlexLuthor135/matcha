@@ -58,12 +58,12 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
     }
 
     var user User
-    if result := DB.Where("username = ?", req.Username).First(&user); result.Error != nil {
-        http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+    if result := DB.Where("email = ?", req.Email).First(&user); result.Error != nil {
+        http.Error(w, "Invalid email or password", http.StatusUnauthorized)
         return
     }
     if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-        http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+        http.Error(w, "Invalid email or password", http.StatusUnauthorized)
         return
     }
 
@@ -135,6 +135,7 @@ func verifyUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"is_staff": user.IsStaff,
+        "is_completed": user.IsCompleted,
     })
 }
 
