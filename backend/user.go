@@ -22,6 +22,13 @@ type BioResponse struct {
 	Interests   []string `json:"interests"`
 }
 
+type UpdateUserRequest struct {
+    Username string `gorm:"unique;not null"`
+	FirstName string `gorm:"not null"`
+	LastName string `gorm:"not null"`
+	Email string `gorm:"unique;not null"`
+}
+
 func createBio(w http.ResponseWriter, r *http.Request) {
     userID, ok := r.Context().Value(userIDKey).(uint)
     if !ok {
@@ -114,4 +121,33 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
+}
+
+func updateUser(w http.ResponseWriter, r *http.Request) {
+    userID, ok := r.Context().Value(userIDKey).(uint)
+    if !ok {
+        http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+        return
+    }
+    var req UpdateUserRequest
+    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+        http.Error(w, "Invalid request payload", http.StatusBadRequest)
+        return
+    }
+    result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
+        Username: req.Username,
+	    FirstName: req.FirstName,
+	    LastName: req.LastName,
+	    Email: req.Email,
+    })
+
+    if result.Error != nil {
+        http.Error(w, "Failed to update profile", http.StatusInternalServerError)
+        return
+    }
+    w.Header().Set("Content-Type", "application/json")
+    w.WriteHeader(http.StatusOK)
+    json.NewEncoder(w).Encode(map[string]string{
+        "message": "Profile updated successfully",
+    })
 }
