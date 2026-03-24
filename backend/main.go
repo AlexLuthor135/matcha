@@ -37,6 +37,7 @@ func main() {
     privateMux.HandleFunc(pat.Get("/verify_login/"), verifyUser)
 	privateMux.HandleFunc(pat.Post("/logout/"), logoutUser)
     privateMux.HandleFunc(pat.Put("/bio/update"), updateBio)
+	privateMux.HandleFunc(pat.Get("/bio/get"), getBio)
 	privateMux.HandleFunc(pat.Post("/bio/create"), createBio)
 
     mux.Handle(pat.New("/api/accounts/*"), privateMux)
