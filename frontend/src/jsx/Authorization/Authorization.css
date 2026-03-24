@@ -1,0 +1,67 @@
+#authorize-container {
+    background: white;
+    padding: 40px;
+    padding-top: 20px;
+    border-radius: 16px;
+    width: auto;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+#authorize {
+  list-style: none;
+  padding: 0;
+  /* margin: 40px; */
+  margin: 0rem;
+  display: flex;
+  justify-content: start;
+  align-items: start;
+  flex-direction: column;
+  gap: 2rem;
+}
+#authorize.register{
+  justify-content: left;
+  align-items: flex-start;
+}
+
+#authorize h2{
+      margin-bottom: 25px;
+    color: #333;
+}
+#authorize li {
+  display: flex;
+  align-items: center;
+  width: 50%;
+
+  border: 2px solid transparent;
+}
+
+#authorize button {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 30px; 
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff4d6d, #fd8c9f);
+  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.4);
+  transition: all 0.3s ease;
+}
+
+#authorize button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(255, 77, 109, 0.6);
+}
+
+#authorize button:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+}
+#authorize .buttons{
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  gap:2rem;
+  width: 100%;
+}

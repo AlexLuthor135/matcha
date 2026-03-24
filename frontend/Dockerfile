@@ -1,7 +1,25 @@
 #DEV SETUP - UNCOMMENT THE VOLUMES IN DOCKER-COMPOSE IN CASE OF IT NOT WORKING
 
+#DANIL FIX
+
+FROM node:22-alpine
+
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 8081
+
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "8081"]
+
+##
+
+
 # Stage 1: Build the React app
-# FROM node:18 AS build
+# FROM node:22 AS build
 # WORKDIR /app
 # COPY package.json package-lock.json ./
 # RUN npm install
@@ -19,28 +37,28 @@
 # CMD ["npm", "run", "dev"]
 
 # Stage 1: Build
-FROM node:18 AS builder
-WORKDIR /app
+# FROM node:22 AS builder
+# WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
+# COPY package*.json ./
+# RUN npm ci
 
-COPY . .
-RUN npm run build
+# COPY . .
+# RUN npm run build
 
-# ----------------------------
-# Stage 2: Production
-FROM node:18-alpine
-WORKDIR /app
+# # ----------------------------
+# # Stage 2: Production
+# FROM node:22-alpine
+# WORKDIR /app
 
-# Copy only what's needed
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/package*.json ./
+# # Copy only what's needed
+# COPY --from=builder /app/dist ./dist
+# COPY --from=builder /app/package*.json ./
 
-# Install only production dependencies
-RUN npm ci --omit=dev
+# # Install only production dependencies
+# RUN npm ci --omit=dev
 
-ENV HOST=0.0.0.0
-EXPOSE 8081
+# ENV HOST=0.0.0.0
+# EXPOSE 8081
 
-CMD ["npx", "serve", "-s", "dist", "--listen", "8081", "--no-compression"]
+# CMD ["npx", "serve", "-s", "dist", "--listen", "8081", "--no-compression"]

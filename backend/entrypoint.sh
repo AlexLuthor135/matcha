@@ -22,8 +22,8 @@ then
         echo "Skipping database deletion and recreation."
     fi
 fi
-# python manage.py flush --no-input
-python manage.py makemigrations
-python manage.py migrate
+
+# Note: In Go, you will run migrations here using a tool like 'goose' or 'golang-migrate'
+# Example: goose -dir ./migrations postgres "user=$SQL_USER password=$SQL_PASSWORD dbname=$SQL_DATABASE host=$SQL_HOST sslmode=disable" up
 
 exec "$@"
