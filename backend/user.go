@@ -6,6 +6,7 @@ import (
     "strings"
     "errors"
     "gorm.io/gorm"
+    "golang.org/x/crypto/bcrypt"
 )
 
 type UpdateBioRequest struct {
@@ -27,6 +28,11 @@ type UpdateUserRequest struct {
 	FirstName string `gorm:"not null"`
 	LastName string `gorm:"not null"`
 	Email string `gorm:"unique;not null"`
+}
+
+type UpdatePasswordRequest struct {
+	OldPassword string `json:"old_password"`
+	NewPassword string `json:"new_password"`
 }
 
 func createBio(w http.ResponseWriter, r *http.Request) {
@@ -150,4 +156,46 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
     json.NewEncoder(w).Encode(map[string]string{
         "message": "Profile updated successfully",
     })
+}
+
+func updatePassword(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+	var req UpdatePasswordRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	if req.OldPassword == "" || req.NewPassword == "" {
+		http.Error(w, "Both old and new passwords are required", http.StatusBadRequest)
+		return
+	}
+	var user User
+	if err := DB.Select("password").First(&user, userID).Error; err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
+	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword))
+	if err != nil {
+		http.Error(w, "Incorrect current password", http.StatusUnauthorized)
+		return
+	}
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		http.Error(w, "Error processing new password", http.StatusInternalServerError)
+		return
+	}
+	result := DB.Model(&User{}).Where("id = ?", userID).Update("password", string(hashedPassword))
+	if result.Error != nil {
+		http.Error(w, "Failed to update password", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Password updated successfully",
+	})
 }
