@@ -58,8 +58,8 @@ export default function RegisterPage(){
         try{
             const response = await axiosInstance.post('/backend/api/register', {
                 username: userData.username,
-                lastName: userData.lastName,
-                firstName: userData.firstName,
+                last_name: userData.lastName,
+                first_name: userData.firstName,
                 password: userData.password,
                 email: userData.email
             });

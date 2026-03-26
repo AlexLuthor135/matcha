@@ -4,6 +4,7 @@ import RegisterPage from './jsx/Authorization/RegisterPage';
 import BioСompletion from './jsx/UserProfile/BioСompletion';
 import PrivateRoute from './jsx/routes/PrivateRoute';
 import UserProfile from './jsx/UserProfile/UserProfile';
+import UpdateUserProfile from './jsx/UserProfile/UpdateUserProfile';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
           <Route element={<PrivateRoute/>}>
             <Route path="/biocompletion" element={<BioСompletion/>}/>
             <Route path="/userprofile" element={<UserProfile/>}/>
+            <Route path='/updateprofile' element={<UpdateUserProfile/>}/>
           </Route>
         </Routes>
       </main>

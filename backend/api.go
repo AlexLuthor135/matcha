@@ -1,14 +1,22 @@
 package main
 
 import (
+    "errors"
 	"os"
 	"fmt"
 	"time"
 	"github.com/golang-jwt/jwt/v5"
+    "github.com/jackc/pgx/v5/pgconn"
 	"encoding/json"
 	"net/http"
+    "strings"
 	"golang.org/x/crypto/bcrypt"
 )
+
+type LoginResponse struct {
+    Message     string `json:"message"`
+    IsCompleted bool `gorm:"default:false"`
+}
 
 func registerUser(w http.ResponseWriter, r *http.Request) {
 	var req RegisterRequest
@@ -17,6 +25,10 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
+    if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.FirstName) == "" || strings.TrimSpace(req.LastName) == "" || strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Password) == "" {
+        http.Error(w, "All fields are required", http.StatusBadRequest)
+        return
+    }
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		http.Error(w, "Error hashing password", http.StatusInternalServerError)
@@ -33,6 +45,11 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 
 	result := DB.Create(&newUser)
 	if result.Error != nil {
+        var pgErr *pgconn.PgError
+        if errors.As(result.Error, &pgErr) && pgErr.Code == "23505" {
+            http.Error(w, "Username or email already exists", http.StatusConflict)
+            return
+        }
 		http.Error(w, "Error creating user: "+result.Error.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -67,6 +84,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
         return
     }
 
+    
     secret := os.Getenv("JWT_SECRET")
     
     accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -90,7 +108,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Error generating refresh token", http.StatusInternalServerError)
         return
     }
-
+    
     http.SetCookie(w, &http.Cookie{
         Name: "access_token",
         Value: accessTokenString,
@@ -100,7 +118,7 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
         Path: "/",
         Expires: time.Now().Add(time.Minute * 15),
     })
-
+    
     http.SetCookie(w, &http.Cookie{
         Name: "refresh_token",
         Value: refreshTokenString,
@@ -110,13 +128,17 @@ func loginUser(w http.ResponseWriter, r *http.Request) {
         Path: "/api/refresh",
         Expires: time.Now().Add(time.Hour * 24 * 7),
     })
-
     w.Header().Set("Content-Type", "application/json")
     w.WriteHeader(http.StatusOK)
     
-    json.NewEncoder(w).Encode(map[string]interface{}{
-        "message": "Login successful",
-    })
+    response := LoginResponse{
+        Message:    "Login successful",
+        IsCompleted: user.IsCompleted,
+    }
+    if err := json.NewEncoder(w).Encode(response); err != nil {
+        http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+        return
+    }
 }
 
 func verifyUser(w http.ResponseWriter, r *http.Request) {

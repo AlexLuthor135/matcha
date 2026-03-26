@@ -48,8 +48,10 @@ export default function LoginPage() {
         password : loginData.password
       });
       console.log('LOGIN SUCCESS : ', isLoggedIn)
-      console.log('LOGIN RESPONSE DATA : ', response)
+      console.log('LOGIN RESPONSE DATA : ', response.data)
       setIsLoggedIn(true);
+      if(response.data.IsCompleted)
+        setIsCompleted(true)
       // if(response.status === 200)
       //   setIsCompleted(true)
     }
