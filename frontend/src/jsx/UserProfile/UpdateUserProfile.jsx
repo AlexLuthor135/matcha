@@ -17,7 +17,6 @@ const [userBio, setUserBio] = useState({
     });
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    // const {isCompleted, setIsCompleted} = useAuth();
 
     const handleChange = (name, value) => {
         setUserBio(prev => ({

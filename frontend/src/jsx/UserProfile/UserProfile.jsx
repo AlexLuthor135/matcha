@@ -3,6 +3,7 @@ import axiosInstance from "../AxiosInstance";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UpdateUserProfile from "./UpdateUserProfile";
+import EditInputButton from "../components/EditeInputButton";
 
 function profileResponseData(responseData){
     if(!responseData ||typeof responseData !== "object")
@@ -32,7 +33,7 @@ export default function UserProfile(){
         interests: []
         });
 
-    const navigate = useNavigate();
+    // const navigate = useNavigate();
 
     useEffect(() => {
         const getUserProfile = async () => {
@@ -51,11 +52,24 @@ export default function UserProfile(){
         getUserProfile();
     },[]);
 
-    const handleUpdateUserProfile = (e) => {
-        e.preventDefault();
-        console.log("NAVIGATING TO UPDATEPROFILE => ");
-        // navigate('/updateprofile');
+    const handleSaveData = async (name, value) =>{
+        try{
+            const response = await axiosInstance.patch('/backend/api/accounts/bio/update',{
+                [name] : value
+            })
+            console.log("AXIOS SAVED" , response);
+        }
+        catch(error){
+            console.log("ERROR", error);
+        }
     }
+
+    const handleChange = (name, value) => {
+    setUserProfileData(prev => ({
+    ...prev,
+    [name]: value
+    }));
+    };
 
     const handleLogout= async (e) => {
         e.preventDefault();
@@ -74,14 +88,14 @@ export default function UserProfile(){
     return(
         <div id="authorize-container">
             <h2>User Profile</h2>
-            <Button>Change</Button>
-            <p>User Name</p>
-            <Button>Change</Button>
+           
+            <p>Username</p>
+
             <p>First Name</p>
             <Button>Change</Button>
             <p>Last Name</p>
             <Button>Change</Button>
-            <p>email</p>
+            <p>Email</p>
             <Button>Change</Button>
             <p>{userProfileData.gender}</p>
             <Button>Change</Button>
@@ -89,8 +103,17 @@ export default function UserProfile(){
             <Button>Change</Button>
             <p>{userProfileData.interests}</p>
             <Button>Change</Button>
-            <p>{userProfileData.bio}</p>
-            <Button onClick={handleUpdateUserProfile}>Change</Button>
+            <EditInputButton
+                type="text"
+                value={userProfileData.bio}
+                placeholder="BIO"
+                // className="input-bio"
+                onChange={(e) => handleChange("bio",e.target.value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("bio", savedValue);
+                }}
+            />
             <Button onClick={handleLogout}>LOGOUT</Button>
         </div>
     );
