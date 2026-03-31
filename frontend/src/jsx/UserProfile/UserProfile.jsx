@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import UpdateUserProfile from "./UpdateUserProfile";
 import EditInputButton from "../components/EditeInputButton";
+import EditSelectButton from "../components/EditSelectButton";
+import EditTagSelectButton from "../components/EditTagSelectorButton";
 
 function profileResponseData(responseData){
     if(!responseData ||typeof responseData !== "object")
@@ -144,12 +146,37 @@ export default function UserProfile(){
                     handleSaveData("email", savedValue);
                 }}
             />
-            <p>{userProfileData.gender}</p>
-            <Button>Change</Button>
-            <p>{userProfileData.preferences}</p>
-            <Button>Change</Button>
-            <p>{userProfileData.interests}</p>
-            <Button>Change</Button>
+            <EditSelectButton
+                value={userProfileData.gender}
+                placeholder="Gender"
+                options={["Male", "Female", "Other"]}
+                onChange={(value) => handleChange("gender", value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("gender", savedValue);
+                }}
+            />
+            <EditSelectButton
+                value={userProfileData.preferences}
+                placeholder="Preferences"
+                options={["Male", "Female", "Other"]}
+                onChange={(value) => handleChange("preferences", value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("preferences", savedValue);
+                }}
+            />
+            <EditTagSelectButton
+                    value={userProfileData.interests}
+                    tags={["#tag1", "#tag2", "#tag3"]}
+                    onChange={(selectedTags) =>
+                        handleChange("interests", selectedTags)}
+                    onSave={(savedValue) => {
+                        console.log("Saved value:", savedValue);
+                        handleSaveData("interests", savedValue);
+                }}
+                    
+            />
             <EditInputButton
                 type="text"
                 value={userProfileData.bio}
