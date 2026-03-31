@@ -25,7 +25,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-    if strings.TrimSpace(req.Username) == "" || strings.TrimSpace(req.FirstName) == "" || strings.TrimSpace(req.LastName) == "" || strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Password) == "" {
+    if strings.TrimSpace(req.UserName) == "" || strings.TrimSpace(req.FirstName) == "" || strings.TrimSpace(req.LastName) == "" || strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Password) == "" {
         http.Error(w, "All fields are required", http.StatusBadRequest)
         return
     }
@@ -36,7 +36,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	newUser := User{
-		Username: req.Username,
+		UserName: req.UserName,
 		FirstName: req.FirstName,
 		LastName: req.LastName,
 		Email: req.Email,
@@ -59,7 +59,7 @@ func registerUser(w http.ResponseWriter, r *http.Request) {
 		"message": "User registered successfully",
 		"user": map[string]interface{}{
 			"id": newUser.ID,
-			"username": newUser.Username,
+			"username": newUser.UserName,
 			"first_name": newUser.FirstName,
 			"last_name": newUser.LastName,
 			"email": newUser.Email,

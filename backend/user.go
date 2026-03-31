@@ -21,13 +21,17 @@ type BioResponse struct {
 	Preferences string   `json:"preferences"`
 	Bio         string   `json:"bio"`
 	Interests   []string `json:"interests"`
+    UserName string `json:"userName"`
+	FirstName string `json:"firstName"`
+	LastName string `json:"lastName"`
+	Email string `json:"email"`
 }
 
 type UpdateUserRequest struct {
-    Username string `gorm:"unique;not null"`
-	FirstName string `gorm:"not null"`
-	LastName string `gorm:"not null"`
-	Email string `gorm:"unique;not null"`
+    UserName  string `json:"userName"`
+    FirstName string `json:"firstName"`
+    LastName  string `json:"lastName"`
+    Email     string `json:"email"`
 }
 
 type UpdatePasswordRequest struct {
@@ -107,7 +111,7 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	result := DB.Select("gender", "preferences", "bio", "interests").First(&user, userID)
+	result := DB.Select("user_name", "first_name", "last_name", "email", "gender", "preferences", "bio", "interests").First(&user, userID)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -121,6 +125,11 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 		Preferences: user.Preferences,
 		Bio:         user.Bio,
 		Interests:   user.Interests,
+        UserName:    user.UserName,
+	    FirstName:   user.FirstName,
+	    LastName:    user.LastName,
+	    Email:       user.Email,
+
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -141,7 +150,7 @@ func updateUser(w http.ResponseWriter, r *http.Request) {
         return
     }
     result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
-        Username: req.Username,
+        UserName: req.UserName,
 	    FirstName: req.FirstName,
 	    LastName: req.LastName,
 	    Email: req.Email,

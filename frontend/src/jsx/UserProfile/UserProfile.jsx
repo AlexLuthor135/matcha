@@ -9,7 +9,7 @@ function profileResponseData(responseData){
     if(!responseData ||typeof responseData !== "object")
         throw new Error("Invalid profile data")
     return {
-        username: String(responseData.username ?? ""),
+        userName: String(responseData.userName ?? ""),
         firstName: String(responseData.firstName ?? ""),
         lastName: String(responseData.lastName ?? ""),
         email: String(responseData.email ?? ""),
@@ -23,7 +23,7 @@ function profileResponseData(responseData){
 export default function UserProfile(){
 
     const [userProfileData, setUserProfileData] = useState({
-        username: "",
+        userName: "",
         firstName: "",
         lastName: "",
         email: "",
@@ -53,14 +53,26 @@ export default function UserProfile(){
     },[]);
 
     const handleSaveData = async (name, value) =>{
-        try{
-            const response = await axiosInstance.patch('/backend/api/accounts/bio/update',{
-                [name] : value
-            })
-            console.log("AXIOS SAVED" , response);
-        }
-        catch(error){
-            console.log("ERROR", error);
+        if(["bio", "interests", "preferences", "gender"].includes(name)){
+            try{
+                const response = await axiosInstance.patch('/backend/api/accounts/bio/update',{
+                    [name] : value
+                })
+                console.log("AXIOS BIO SAVED" , response.data);
+            }
+            catch(error){
+                console.log("ERROR", error);
+            }
+        }else if(["username", "firstName", "lastName", "email"]){
+            try{
+                const response = await axiosInstance.patch('/backend/api/accounts/user/update',{
+                    [name] : value
+                })
+                console.log("AXIOS USER SAVED" , response.data);
+            }
+            catch(error){
+                console.log("ERROR", error);
+            }
         }
     }
 
@@ -88,15 +100,50 @@ export default function UserProfile(){
     return(
         <div id="authorize-container">
             <h2>User Profile</h2>
-           
-            <p>Username</p>
-
-            <p>First Name</p>
-            <Button>Change</Button>
-            <p>Last Name</p>
-            <Button>Change</Button>
-            <p>Email</p>
-            <Button>Change</Button>
+            <EditInputButton
+                type="text"
+                value={userProfileData.userName}
+                placeholder="Username"
+                // className="input-bio"
+                onChange={(e) => handleChange("userName",e.target.value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("username", savedValue);
+                }}
+            />
+            <EditInputButton
+                type="text"
+                value={userProfileData.firstName}
+                placeholder="firstName"
+                // className="input-bio"
+                onChange={(e) => handleChange("firstName",e.target.value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("firstName", savedValue);
+                }}
+            />
+            <EditInputButton
+                type="text"
+                value={userProfileData.lastName}
+                placeholder="lastName"
+                // className="input-bio"
+                onChange={(e) => handleChange("lastName",e.target.value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("lastName", savedValue);
+                }}
+            />
+            <EditInputButton
+                type="text"
+                value={userProfileData.email}
+                placeholder="email"
+                // className="input-bio"
+                onChange={(e) => handleChange("email",e.target.value)}
+                onSave={(savedValue) => {
+                    console.log("Saved value:", savedValue);
+                    handleSaveData("email", savedValue);
+                }}
+            />
             <p>{userProfileData.gender}</p>
             <Button>Change</Button>
             <p>{userProfileData.preferences}</p>
