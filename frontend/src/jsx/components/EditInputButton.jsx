@@ -14,7 +14,7 @@ export default function EditInputButton(props) {
     };
 
     return (
-        <div>
+        <div className="profile-field-control">
             {isEditing ? (
                 <>
                     <InputBlock {...inputProps} value={value} onChange={onChange} />
@@ -23,7 +23,12 @@ export default function EditInputButton(props) {
             ) : (
                 <>
                     <p>{value}</p>
-                    <Button onClick={() => setIsEditing(true)}> Edit </Button>
+                    <Button
+                        onClick={() => setIsEditing(true)}
+                        iconSrc="/edit_button.png"
+                        ariaLabel="Edit"
+                        iconAlt="Edit"
+                    />
                 </>
             )}
         </div>

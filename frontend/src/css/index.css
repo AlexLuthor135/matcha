@@ -30,3 +30,8 @@ body {
   background-size: 100% 100%, 10% 10%, 100% 100%;
   min-height: 50rem; */
 }
+
+main {
+  width: 100%;
+  padding-top: 48px;
+}

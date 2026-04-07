@@ -1,0 +1,271 @@
+#user-profile-container {
+  --avatar-size: 140px;
+
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  max-width: 900px;   /* было 600px */
+  width: 100%;
+  margin: 40px auto;
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+
+#user-profile {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 1.5rem;
+  text-align: left;
+  padding: 0;
+  max-width: 820px;
+  margin: 0 auto;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1.1rem 1.2rem;
+  align-items: start;
+}
+
+.profile-grid > .field {
+  grid-column: span 6;
+}
+
+.profile-grid > .username,
+.profile-grid > .email,
+.profile-grid > .interests,
+.profile-grid > .bio {
+  grid-column: 1 / -1;
+}
+
+.profile-grid > .first-name,
+.profile-grid > .gender {
+  grid-column: 1 / 7;
+}
+
+.profile-grid > .last-name,
+.profile-grid > .preferences {
+  grid-column: 7 / -1;
+}
+
+.profile-grid > button {
+  justify-self: end;
+}
+
+.profile-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.form-row {
+  width: 100%;
+}
+.form-row.two-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+#user-profile.register{
+  justify-content: left;
+  align-items: flex-start;
+}
+
+#user-profile h2{
+      margin-bottom: 25px;
+    color: #333;
+}
+#user-profile li {
+  display: flex;
+  align-items: center;
+  width: 100%;
+
+  border: 2px solid transparent;
+}
+
+#user-profile button {
+  padding: 14px 28px;
+  border: none;
+  border-radius: 30px; 
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  background: linear-gradient(135deg, #ff4d6d, #fd8c9f);
+  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.4);
+  transition: all 0.3s ease;
+}
+
+#user-profile button img {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+#user-profile button.icon-button {
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  color: inherit;
+  width: auto;
+  height: auto;
+}
+
+#user-profile button.icon-button:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+#user-profile button.icon-button:active {
+  transform: none;
+  box-shadow: none;
+}
+
+#user-profile button:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 25px rgba(255, 77, 109, 0.6);
+}
+
+#user-profile button:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 15px rgba(255, 77, 109, 0.4);
+}
+#user-profile .buttons{
+display: flex;
+justify-content: space-between;
+align-items: center;
+gap: 1rem;
+width: 100%;
+}
+
+.profile-avatar{
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0 auto;
+}
+
+.field {
+  width: 100%;
+}
+
+.field > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+.profile-field-control {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 1rem;
+  width: 100%;
+}
+
+.profile-field-control > li,
+.profile-field-control > .custom-select,
+.profile-field-control > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.profile-field-control > li {
+  width: auto;
+}
+
+.profile-field-control > button {
+  flex: 0 0 auto;
+  align-self: flex-start;
+}
+
+.field p {
+  margin: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.field button {
+  align-self: flex-start;
+  flex: 0 0 auto;
+}
+
+.interests > div,
+.bio > div {
+  row-gap: 0;
+}
+
+.interests button,
+.bio button {
+  align-self: flex-start;
+}
+
+@media (max-width: 768px) {
+  #user-profile-container {
+    --avatar-size: 110px;
+    padding: 24px;
+    margin: 20px auto;
+  }
+
+  .profile-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .profile-grid > .field,
+  .profile-grid > .username,
+  .profile-grid > .email,
+  .profile-grid > .interests,
+  .profile-grid > .bio,
+  .profile-grid > .first-name,
+  .profile-grid > .gender,
+  .profile-grid > .last-name,
+  .profile-grid > .preferences,
+  .profile-grid > button {
+    grid-column: 1 / -1;
+  }
+
+  .profile-grid > button {
+    justify-self: stretch;
+  }
+
+  .profile-actions {
+    justify-content: stretch;
+  }
+
+  .profile-actions button {
+    width: 100%;
+  }
+
+  .field > div {
+    flex-direction: column;
+    align-items: flex-start;
+    row-gap: 0.7rem;
+  }
+
+  .profile-field-control {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-field-control > li,
+  .profile-field-control > .custom-select,
+  .profile-field-control > div,
+  .profile-field-control > button {
+    width: 100%;
+  }
+
+  .field button {
+    align-self: stretch;
+  }
+}

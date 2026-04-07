@@ -1,11 +1,10 @@
 import { Button } from "../components/Button";
 import axiosInstance from "../AxiosInstance";
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import UpdateUserProfile from "./UpdateUserProfile";
-import EditInputButton from "../components/EditeInputButton";
+import EditInputButton from "../components/EditInputButton";
 import EditSelectButton from "../components/EditSelectButton";
 import EditTagSelectButton from "../components/EditTagSelectorButton";
+import "./UserProfile.css"
 
 function profileResponseData(responseData){
     if(!responseData ||typeof responseData !== "object")
@@ -100,95 +99,121 @@ export default function UserProfile(){
         }
     }
     return(
-        <div id="authorize-container">
+        <div id="user-profile-container">
+            <div id="user-profile">
             <h2>User Profile</h2>
-            <EditInputButton
-                type="text"
-                value={userProfileData.userName}
-                placeholder="Username"
-                // className="input-bio"
-                onChange={(e) => handleChange("userName",e.target.value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("username", savedValue);
-                }}
-            />
-            <EditInputButton
-                type="text"
-                value={userProfileData.firstName}
-                placeholder="firstName"
-                // className="input-bio"
-                onChange={(e) => handleChange("firstName",e.target.value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("firstName", savedValue);
-                }}
-            />
-            <EditInputButton
-                type="text"
-                value={userProfileData.lastName}
-                placeholder="lastName"
-                // className="input-bio"
-                onChange={(e) => handleChange("lastName",e.target.value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("lastName", savedValue);
-                }}
-            />
-            <EditInputButton
-                type="text"
-                value={userProfileData.email}
-                placeholder="email"
-                // className="input-bio"
-                onChange={(e) => handleChange("email",e.target.value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("email", savedValue);
-                }}
-            />
-            <EditSelectButton
-                value={userProfileData.gender}
-                placeholder="Gender"
-                options={["Male", "Female", "Other"]}
-                onChange={(value) => handleChange("gender", value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("gender", savedValue);
-                }}
-            />
-            <EditSelectButton
-                value={userProfileData.preferences}
-                placeholder="Preferences"
-                options={["Male", "Female", "Other"]}
-                onChange={(value) => handleChange("preferences", value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("preferences", savedValue);
-                }}
-            />
-            <EditTagSelectButton
-                    value={userProfileData.interests}
-                    tags={["#tag1", "#tag2", "#tag3"]}
-                    onChange={(selectedTags) =>
-                        handleChange("interests", selectedTags)}
-                    onSave={(savedValue) => {
-                        console.log("Saved value:", savedValue);
-                        handleSaveData("interests", savedValue);
-                }}
-                    
-            />
-            <EditInputButton
-                type="text"
-                value={userProfileData.bio}
-                placeholder="BIO"
-                // className="input-bio"
-                onChange={(e) => handleChange("bio",e.target.value)}
-                onSave={(savedValue) => {
-                    console.log("Saved value:", savedValue);
-                    handleSaveData("bio", savedValue);
-                }}
-            />
-            <Button onClick={handleLogout}>LOGOUT</Button>
+                <img
+                    className="profile-avatar"
+                    src="/1.png"
+                    alt={`${userProfileData.userName || "User"} avatar`}
+                />
+                <div className="profile-grid">
+                    <div className="field username">
+                    <EditInputButton
+                        type="text"
+                        value={userProfileData.userName}
+                        placeholder="Username"
+                        // className="input-bio"
+                        onChange={(e) => handleChange("userName",e.target.value)}
+                        onSave={(savedValue) => {
+                            console.log("Saved value:", savedValue);
+                            handleSaveData("username", savedValue);
+                        }}
+                    />
+                    </div>
+                    <div className="field first-name">
+                        <EditInputButton
+                            type="text"
+                            value={userProfileData.firstName}
+                            placeholder="firstName"
+                            // className="input-bio"
+                            onChange={(e) => handleChange("firstName",e.target.value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("firstName", savedValue);
+                            }}
+                        />
+                    </div>
+                    <div className="field last-name">
+                        <EditInputButton
+                            type="text"
+                            value={userProfileData.lastName}
+                            placeholder="lastName"
+                            // className="input-bio"
+                            onChange={(e) => handleChange("lastName",e.target.value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("lastName", savedValue);
+                            }}
+                        />
+                    </div>
+                    <div className="field email">
+                        <EditInputButton
+                            type="text"
+                            value={userProfileData.email}
+                            placeholder="email"
+                            // className="input-bio"
+                            onChange={(e) => handleChange("email",e.target.value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("email", savedValue);
+                            }}
+                        />
+                    </div>
+                    <div className="field gender">
+                        <EditSelectButton
+                            value={userProfileData.gender}
+                            placeholder="Gender"
+                            options={["Male", "Female", "Other"]}
+                            onChange={(value) => handleChange("gender", value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("gender", savedValue);
+                            }}
+                        />
+                    </div>
+                    <div className="field preferences">
+                        <EditSelectButton
+                            value={userProfileData.preferences}
+                            placeholder="Preferences"
+                            options={["Male", "Female", "Other"]}
+                            onChange={(value) => handleChange("preferences", value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("preferences", savedValue);
+                            }}
+                        />
+                    </div>
+                    <div className="field interests">
+                        <EditTagSelectButton
+                            value={userProfileData.interests}
+                            tags={["#tag1", "#tag2", "#tag3"]}
+                            onChange={(selectedTags) =>
+                                handleChange("interests", selectedTags)}
+                                onSave={(savedValue) => {
+                                    console.log("Saved value:", savedValue);
+                                handleSaveData("interests", savedValue);
+                        }}
+                        />
+                    </div>
+                    <div className="field bio">
+                        <EditInputButton
+                            type="text"
+                            value={userProfileData.bio}
+                            placeholder="BIO"
+                            // className="input-bio"
+                            onChange={(e) => handleChange("bio",e.target.value)}
+                            onSave={(savedValue) => {
+                                console.log("Saved value:", savedValue);
+                                handleSaveData("bio", savedValue);
+                            }}
+                        />
+                    </div>
+                </div>
+                <div className="profile-actions">
+                    <Button onClick={handleLogout}>LOGOUT</Button>
+                </div>
+            </div>
         </div>
     );
 }

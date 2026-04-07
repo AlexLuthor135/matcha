@@ -15,7 +15,7 @@ export default function EditTagSelectButton(props) {
     };
 
     return (
-        <div>
+        <div className="profile-field-control">
             {isEditing ? (
                 <>
                     <TagSelector {...inputProps} onChange={onChange}/>
@@ -24,7 +24,12 @@ export default function EditTagSelectButton(props) {
             ) : (
                 <>
                     <p>{value}</p>
-                    <Button onClick={() => setIsEditing(true)}> Edit </Button>
+                    <Button
+                        onClick={() => setIsEditing(true)}
+                        iconSrc="/edit_button.png"
+                        ariaLabel="Edit"
+                        iconAlt="Edit"
+                    />
                 </>
             )}
         </div>

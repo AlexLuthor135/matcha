@@ -14,7 +14,7 @@ export default function EditSelectButton(props) {
     };
 
     return (
-        <div>
+        <div className="profile-field-control">
             {isEditing ? (
                 <>
                     <CustomSelect {...inputProps} onChange={onChange} />
@@ -23,7 +23,12 @@ export default function EditSelectButton(props) {
             ) : (
                 <>
                     <p>{value}</p>
-                    <Button onClick={() => setIsEditing(true)}> Edit </Button>
+                    <Button
+                        onClick={() => setIsEditing(true)}
+                        iconSrc="/edit_button.png"
+                        ariaLabel="Edit"
+                        iconAlt="Edit"
+                    />
                 </>
             )}
         </div>

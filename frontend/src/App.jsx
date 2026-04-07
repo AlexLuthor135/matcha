@@ -5,11 +5,13 @@ import BioСompletion from './jsx/UserProfile/BioСompletion';
 import PrivateRoute from './jsx/routes/PrivateRoute';
 import UserProfile from './jsx/UserProfile/UserProfile';
 import UpdateUserProfile from './jsx/UserProfile/UpdateUserProfile';
+import NavigationBar from './jsx/NavigationBar/NavigationBar';
 
 export default function App() {
   return (
    <BrowserRouter>
       <main>
+            <NavigationBar/>
         <Routes>
           <Route path="/" element={<LoginPage />}/>
           <Route path="/registration" element={<RegisterPage />}/>

@@ -1,0 +1,31 @@
+h2, p {
+  margin: 10px;
+}
+
+.navigation-bar {
+  list-style-type: none;
+  margin: 0;
+  padding: 0;
+  background-color: #333333;
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1000;
+}
+
+.navigation-bar li a {
+  display: block;
+  color: white;
+  padding: 14px 16px;
+  text-decoration: none;
+}
+
+.navigation-bar li a:hover:not(.active) {
+  background-color: #111111;
+}
+
+.navigation-bar li a.active {
+  background-color: #04AA6D;
+}
