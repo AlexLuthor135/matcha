@@ -6,6 +6,7 @@ import PrivateRoute from './jsx/routes/PrivateRoute';
 import UserProfile from './jsx/UserProfile/UserProfile';
 import UpdateUserProfile from './jsx/UserProfile/UpdateUserProfile';
 import NavigationBar from './jsx/NavigationBar/NavigationBar';
+import DatingSlider from './jsx/DatingSlider/DatingSlider';
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
             <Route path="/biocompletion" element={<BioСompletion/>}/>
             <Route path="/userprofile" element={<UserProfile/>}/>
             <Route path='/updateprofile' element={<UpdateUserProfile/>}/>
+            <Route path='/datingslider' element={<DatingSlider/>}/>
           </Route>
         </Routes>
       </main>
