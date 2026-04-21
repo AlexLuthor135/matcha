@@ -55,7 +55,7 @@
 
 .profile-actions {
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
 }
 
@@ -152,6 +152,56 @@ width: 100%;
   margin: 0 auto;
 }
 
+#user-profile .avatar-wrapper {
+  position: relative;
+  width: var(--avatar-size);
+  margin: 0 auto;
+}
+
+#user-profile .avatar-wrapper .profile-avatar {
+  margin: 0;
+}
+
+#user-profile .avatar-overlay-btn {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.68);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
+}
+
+#user-profile .avatar-wrapper:hover .avatar-overlay-btn,
+#user-profile .avatar-wrapper:focus-within .avatar-overlay-btn {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+#user-profile .avatar-overlay-btn:hover,
+#user-profile .avatar-overlay-btn:active {
+  box-shadow: none;
+  transform: translateY(0);
+}
+
+@media (hover: none) {
+  #user-profile .avatar-overlay-btn {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}
+
 .field {
   width: 100%;
 }
@@ -239,9 +289,7 @@ width: 100%;
     justify-self: stretch;
   }
 
-  .profile-actions {
-    justify-content: stretch;
-  }
+
 
   .profile-actions button {
     width: 100%;

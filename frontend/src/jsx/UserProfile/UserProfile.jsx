@@ -98,15 +98,28 @@ export default function UserProfile(){
 
         }
     }
+
+    const handleAvatarClick = () => {
+        console.log("avatar clicked");
+    }
+
     return(
         <div id="user-profile-container">
             <div id="user-profile">
             <h2>User Profile</h2>
-                <img
-                    className="profile-avatar"
-                    src="/1.png"
-                    alt={`${userProfileData.userName || "User"} avatar`}
-                />
+                <div className="avatar-wrapper">
+                    <img
+                        className="profile-avatar"
+                        src="/1.png"
+                        alt={`${userProfileData.userName || "User"} avatar`}
+                    />
+                        <button
+                            type="button"
+                            className="avatar-overlay-btn"
+                            onClick={handleAvatarClick}>
+                                Change Avatar
+                    </button>
+                </div>
                 <div className="profile-grid">
                     <div className="field username">
                     <EditInputButton
