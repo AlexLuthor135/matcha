@@ -30,7 +30,7 @@ func initDB() {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	err = DB.AutoMigrate(&User{})
+	err = DB.AutoMigrate(&User{}, &Photo{})
 	if err != nil {
 		log.Fatalf("Failed to migrate database: %v", err)
 	}

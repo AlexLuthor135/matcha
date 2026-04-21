@@ -2,36 +2,72 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"mime/multipart"
 	"net/http"
-    "strings"
-    "errors"
-    "gorm.io/gorm"
-    "golang.org/x/crypto/bcrypt"
+	"os"
+	"path/filepath"
+	"strings"
+	"time"
+
+	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
-type UpdateBioRequest struct {
-    Gender    string   `json:"gender"`
-    Preferences    string   `json:"preferences"`
-    Bio       string   `json:"bio"`
-    Interests []string `json:"interests"`
+const maxUploadSize = 5 << 20
+
+var allowedImageContentTypes = map[string]struct{}{
+	"image/jpeg": {},
+	"image/png":  {},
+	"image/gif":  {},
+	"image/webp": {},
 }
 
-type BioResponse struct {
+var allowedImageExtensions = map[string]struct{}{
+	".jpg":  {},
+	".jpeg": {},
+	".png":  {},
+	".gif":  {},
+	".webp": {},
+}
+
+type storedUpload struct {
+	FilePath  string
+	PublicURL string
+}
+
+type UpdateBioRequest struct {
 	Gender      string   `json:"gender"`
 	Preferences string   `json:"preferences"`
 	Bio         string   `json:"bio"`
 	Interests   []string `json:"interests"`
-    UserName string `json:"userName"`
-	FirstName string `json:"firstName"`
-	LastName string `json:"lastName"`
-	Email string `json:"email"`
+}
+
+type BioResponse struct {
+	Gender      string          `json:"gender"`
+	Preferences string          `json:"preferences"`
+	Bio         string          `json:"bio"`
+	Interests   []string        `json:"interests"`
+	UserName    string          `json:"userName"`
+	FirstName   string          `json:"firstName"`
+	LastName    string          `json:"lastName"`
+	Email       string          `json:"email"`
+	Avatar      string          `json:"avatar"`
+	Photos      []PhotoResponse `json:"photos"`
+}
+
+type PhotoResponse struct {
+	ID  uint   `json:"id"`
+	URL string `json:"url"`
 }
 
 type UpdateUserRequest struct {
-    UserName  string `json:"userName"`
-    FirstName string `json:"firstName"`
-    LastName  string `json:"lastName"`
-    Email     string `json:"email"`
+	UserName  string `json:"userName"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Email     string `json:"email"`
 }
 
 type UpdatePasswordRequest struct {
@@ -40,67 +76,67 @@ type UpdatePasswordRequest struct {
 }
 
 func createBio(w http.ResponseWriter, r *http.Request) {
-    userID, ok := r.Context().Value(userIDKey).(uint)
-    if !ok {
-        http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
-        return
-    }
-    var req UpdateBioRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request payload", http.StatusBadRequest)
-        return
-    }
-    isCompleted := strings.TrimSpace(req.Gender) != "" &&
-        strings.TrimSpace(req.Preferences) != "" &&
-        strings.TrimSpace(req.Bio) != "" &&
-        len(req.Interests) > 0
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+	var req UpdateBioRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	isCompleted := strings.TrimSpace(req.Gender) != "" &&
+		strings.TrimSpace(req.Preferences) != "" &&
+		strings.TrimSpace(req.Bio) != "" &&
+		len(req.Interests) > 0
 
-    result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
-        Gender:    req.Gender,
-        Bio:       req.Bio,
-        Interests: req.Interests,
-        Preferences:    req.Preferences,
-        IsCompleted: isCompleted,
-    })
+	result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
+		Gender:      req.Gender,
+		Bio:         req.Bio,
+		Interests:   req.Interests,
+		Preferences: req.Preferences,
+		IsCompleted: isCompleted,
+	})
 
-    if result.Error != nil {
-        http.Error(w, "Failed to update profile", http.StatusInternalServerError)
-        return
-    }
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{
-        "message": "Profile updated successfully",
-    })
+	if result.Error != nil {
+		http.Error(w, "Failed to update profile", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Profile updated successfully",
+	})
 }
 
 func updateBio(w http.ResponseWriter, r *http.Request) {
-    userID, ok := r.Context().Value(userIDKey).(uint)
-    if !ok {
-        http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
-        return
-    }
-    var req UpdateBioRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request payload", http.StatusBadRequest)
-        return
-    }
-    result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
-        Gender:    req.Gender,
-        Bio:       req.Bio,
-        Interests: req.Interests,
-        Preferences:    req.Preferences,
-    })
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+	var req UpdateBioRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
+		Gender:      req.Gender,
+		Bio:         req.Bio,
+		Interests:   req.Interests,
+		Preferences: req.Preferences,
+	})
 
-    if result.Error != nil {
-        http.Error(w, "Failed to update profile", http.StatusInternalServerError)
-        return
-    }
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{
-        "message": "Profile updated successfully",
-    })
+	if result.Error != nil {
+		http.Error(w, "Failed to update profile", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Profile updated successfully",
+	})
 }
 
 func getBio(w http.ResponseWriter, r *http.Request) {
@@ -111,7 +147,7 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	result := DB.Select("user_name", "first_name", "last_name", "email", "gender", "preferences", "bio", "interests").First(&user, userID)
+	result := DB.Preload("Photos").Omit("password").First(&user, userID)
 	if result.Error != nil {
 		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
 			http.Error(w, "User not found", http.StatusNotFound)
@@ -120,16 +156,26 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to retrieve profile", http.StatusInternalServerError)
 		return
 	}
+
+	photos := make([]PhotoResponse, 0, len(user.Photos))
+	for _, photo := range user.Photos {
+		photos = append(photos, PhotoResponse{
+			ID:  photo.ID,
+			URL: photo.URL,
+		})
+	}
+
 	response := BioResponse{
 		Gender:      user.Gender,
 		Preferences: user.Preferences,
 		Bio:         user.Bio,
 		Interests:   user.Interests,
-        UserName:    user.UserName,
-	    FirstName:   user.FirstName,
-	    LastName:    user.LastName,
-	    Email:       user.Email,
-
+		UserName:    user.UserName,
+		FirstName:   user.FirstName,
+		LastName:    user.LastName,
+		Email:       user.Email,
+		Avatar:      user.Avatar,
+		Photos:      photos,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -139,32 +185,32 @@ func getBio(w http.ResponseWriter, r *http.Request) {
 }
 
 func updateUser(w http.ResponseWriter, r *http.Request) {
-    userID, ok := r.Context().Value(userIDKey).(uint)
-    if !ok {
-        http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
-        return
-    }
-    var req UpdateUserRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-        http.Error(w, "Invalid request payload", http.StatusBadRequest)
-        return
-    }
-    result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
-        UserName: req.UserName,
-	    FirstName: req.FirstName,
-	    LastName: req.LastName,
-	    Email: req.Email,
-    })
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+	var req UpdateUserRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	result := DB.Model(&User{}).Where("id = ?", userID).Updates(User{
+		UserName:  req.UserName,
+		FirstName: req.FirstName,
+		LastName:  req.LastName,
+		Email:     req.Email,
+	})
 
-    if result.Error != nil {
-        http.Error(w, "Failed to update profile", http.StatusInternalServerError)
-        return
-    }
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    json.NewEncoder(w).Encode(map[string]string{
-        "message": "Profile updated successfully",
-    })
+	if result.Error != nil {
+		http.Error(w, "Failed to update profile", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Profile updated successfully",
+	})
 }
 
 func updatePassword(w http.ResponseWriter, r *http.Request) {
@@ -207,4 +253,135 @@ func updatePassword(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Password updated successfully",
 	})
+}
+
+func uploadAvatar(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+
+	upload, ok := storeUploadedImage(w, r, userID, "avatar", "avatars")
+	if !ok {
+		return
+	}
+
+	if result := DB.Model(&User{}).Where("id = ?", userID).Update("avatar", upload.PublicURL); result.Error != nil {
+		_ = os.Remove(upload.FilePath)
+		http.Error(w, "Failed to upload avatar", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{
+		"message":    "Avatar uploaded successfully",
+		"avatar_url": upload.PublicURL,
+	})
+}
+
+func uploadPhoto(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(userIDKey).(uint)
+	if !ok {
+		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
+		return
+	}
+
+	upload, ok := storeUploadedImage(w, r, userID, "photo", "photos")
+	if !ok {
+		return
+	}
+
+	photo := Photo{
+		UserID: userID,
+		URL:    upload.PublicURL,
+	}
+	if err := DB.Create(&photo).Error; err != nil {
+		_ = os.Remove(upload.FilePath)
+		http.Error(w, "Failed to upload photo", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(map[string]any{
+		"message":   "Photo uploaded successfully",
+		"photo_id":  photo.ID,
+		"photo_url": photo.URL,
+	})
+}
+
+func storeUploadedImage(w http.ResponseWriter, r *http.Request, userID uint, formField, subDir string) (storedUpload, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
+	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
+		http.Error(w, "File too large", http.StatusBadRequest)
+		return storedUpload{}, false
+	}
+
+	file, handler, err := r.FormFile(formField)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error retrieving the %s file", formField), http.StatusBadRequest)
+		return storedUpload{}, false
+	}
+	defer file.Close()
+
+	if err := validateImageUpload(file, handler.Filename); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return storedUpload{}, false
+	}
+
+	ext := strings.ToLower(filepath.Ext(handler.Filename))
+	newFileName := fmt.Sprintf("user_%d_%d%s", userID, time.Now().UnixNano(), ext)
+	uploadDir := filepath.Join(".", "uploads", subDir)
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		http.Error(w, "Failed to create upload directory", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+
+	filePath := filepath.Join(uploadDir, newFileName)
+	dst, err := os.Create(filePath)
+	if err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+	defer dst.Close()
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		http.Error(w, "Failed to process uploaded file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+
+	return storedUpload{
+		FilePath:  filePath,
+		PublicURL: fmt.Sprintf("/uploads/%s/%s", subDir, newFileName),
+	}, true
+}
+
+func validateImageUpload(file multipart.File, filename string) error {
+	ext := strings.ToLower(filepath.Ext(filename))
+	if _, ok := allowedImageExtensions[ext]; !ok {
+		return errors.New("unsupported image format")
+	}
+
+	header := make([]byte, 512)
+	n, err := file.Read(header)
+	if err != nil && !errors.Is(err, io.EOF) {
+		return errors.New("failed to inspect uploaded file")
+	}
+
+	contentType := http.DetectContentType(header[:n])
+	if _, ok := allowedImageContentTypes[contentType]; !ok {
+		return errors.New("uploaded file is not a supported image")
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return errors.New("failed to process uploaded file")
+	}
+
+	return nil
 }
