@@ -1,6 +1,0 @@
-./api.go
-./auth.go
-./db.go
-./main.go
-./models.go
-./user.go
