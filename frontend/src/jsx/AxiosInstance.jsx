@@ -19,6 +19,13 @@ axiosInstance.interceptors.request.use(config => {
   if (csrfToken) {
     config.headers['X-CSRFToken'] = csrfToken;
   }
+  
+  // Если отправляется FormData, НЕ устанавливать Content-Type
+  // Браузер сам установит правильный multipart/form-data с boundary
+  if (config.data instanceof FormData) {
+    delete config.headers['Content-Type'];
+  }
+  
   return config;
 });
 

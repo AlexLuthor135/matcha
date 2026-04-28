@@ -14,6 +14,7 @@ function profileResponseData(responseData){
         firstName: String(responseData.firstName ?? ""),
         lastName: String(responseData.lastName ?? ""),
         email: String(responseData.email ?? ""),
+        avatar: String(responseData.avatar ?? ""),
         // password: String(responseData.password ?? ""),
         gender: String(responseData.gender ?? ""),
         preferences: String(responseData.preferences ?? ""),
@@ -28,6 +29,7 @@ export default function UserProfile(){
         firstName: "",
         lastName: "",
         email: "",
+        avatar: "",
         gender: "",
         preferences: "",
         bio: "",
@@ -99,9 +101,44 @@ export default function UserProfile(){
         }
     }
 
-    const handleAvatarClick = () => {
-        console.log("avatar clicked");
-    }
+    const uploadAvatar = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) {
+            console.warn("No file selected");
+            return;
+        }
+
+        // console.log("File info:", {
+        //     name: file.name,
+        //     size: file.size,
+        //     type: file.type,
+        //     lastModified: file.lastModified
+        // });
+
+        const formData = new FormData();
+        formData.append("avatar", file);
+
+        try {
+            const response = await axiosInstance.post(
+                "/backend/api/accounts/avatar/upload",
+                formData
+            );
+
+            console.log("Upload success:", response.data.avatar_url);
+            setUserProfileData(prev => ({
+                ...prev,
+                avatar: response.data.avatar_url ?? ""
+                }));
+            e.target.value = '';
+
+        } catch (error) {
+            console.error("Upload failed - Full error:", error);
+            console.error("Error response status:", error.response?.status);
+            console.error("Error response data:", error.response?.data);
+            console.error("Error message:", error.message);
+            e.target.value = '';
+        }
+    };
 
     return(
         <div id="user-profile-container">
@@ -110,15 +147,13 @@ export default function UserProfile(){
                 <div className="avatar-wrapper">
                     <img
                         className="profile-avatar"
-                        src="/1.png"
+                        src={userProfileData.avatar ? "/backend" + userProfileData.avatar : ""}
                         alt={`${userProfileData.userName || "User"} avatar`}
                     />
-                        <button
-                            type="button"
+                        <input
+                            type="file"
                             className="avatar-overlay-btn"
-                            onClick={handleAvatarClick}>
-                                Change Avatar
-                    </button>
+                            onChange={uploadAvatar}/>
                 </div>
                 <div className="profile-grid">
                     <div className="field username">
