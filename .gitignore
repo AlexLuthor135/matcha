@@ -1,3 +1,7 @@
 .env
 frontend/node_modules
+<<<<<<< HEAD
 backend/media/uploads/avatars/
+=======
+backend/.gocache
+>>>>>>> 43110107c0256c4602d50ed51bfa5c05ad704021

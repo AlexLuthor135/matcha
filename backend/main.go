@@ -39,6 +39,7 @@ func main() {
 	privateMux.HandleFunc(pat.Post("/logout/"), logoutUser)
 	privateMux.HandleFunc(pat.Patch("/bio/update"), updateBio)
 	privateMux.HandleFunc(pat.Get("/bio/get"), getBio)
+	privateMux.HandleFunc(pat.Get("/profiles/feed"), getProfileFeed)
 	privateMux.HandleFunc(pat.Post("/bio/create"), createBio)
 	privateMux.HandleFunc(pat.Patch("/user/update"), updateUser)
 	privateMux.HandleFunc(pat.Patch("/user/password/update"), updatePassword)
