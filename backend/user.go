@@ -18,6 +18,8 @@ import (
 )
 
 const maxUploadSize = 5 << 20
+const maxUserPhotos = 5
+const maxPhotoUploadRequestSize = maxUploadSize*maxUserPhotos + (1 << 20)
 const defaultProfileFeedLimit = 20
 const maxProfileFeedLimit = 50
 
@@ -354,17 +356,35 @@ func uploadPhoto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	upload, ok := storeUploadedImage(w, r, userID, "photo", "photos")
+	var existingPhotoCount int64
+	if err := DB.Model(&Photo{}).Where("user_id = ?", userID).Count(&existingPhotoCount).Error; err != nil {
+		http.Error(w, "Failed to check uploaded photos", http.StatusInternalServerError)
+		return
+	}
+
+	remainingSlots := maxUserPhotos - int(existingPhotoCount)
+	if remainingSlots <= 0 {
+		http.Error(w, "You can upload up to 5 photos", http.StatusBadRequest)
+		return
+	}
+
+	uploads, ok := storeUploadedImages(w, r, userID, "photos", "photos", remainingSlots)
 	if !ok {
 		return
 	}
 
-	photo := Photo{
-		UserID: userID,
-		URL:    upload.PublicURL,
+	photos := make([]Photo, 0, len(uploads))
+	for _, upload := range uploads {
+		photos = append(photos, Photo{
+			UserID: userID,
+			URL:    upload.PublicURL,
+		})
 	}
-	if err := DB.Create(&photo).Error; err != nil {
-		_ = os.Remove(upload.FilePath)
+
+	if err := DB.Create(&photos).Error; err != nil {
+		for _, upload := range uploads {
+			_ = os.Remove(upload.FilePath)
+		}
 		http.Error(w, "Failed to upload photo", http.StatusInternalServerError)
 		return
 	}
@@ -372,10 +392,49 @@ func uploadPhoto(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]any{
-		"message":   "Photo uploaded successfully",
-		"photo_id":  photo.ID,
-		"photo_url": photo.URL,
+		"message":        "Photos uploaded successfully",
+		"uploaded_count": len(photos),
+		"photos":         buildPhotoResponses(photos),
 	})
+}
+
+func storeUploadedImages(w http.ResponseWriter, r *http.Request, userID uint, formField, subDir string, maxFiles int) ([]storedUpload, bool) {
+	r.Body = http.MaxBytesReader(w, r.Body, maxPhotoUploadRequestSize)
+	if err := r.ParseMultipartForm(maxPhotoUploadRequestSize); err != nil {
+		http.Error(w, "Files are too large", http.StatusBadRequest)
+		return nil, false
+	}
+
+	fileHeaders := r.MultipartForm.File[formField]
+	if len(fileHeaders) == 0 {
+		fileHeaders = r.MultipartForm.File["photo"]
+	}
+	if len(fileHeaders) == 0 {
+		http.Error(w, fmt.Sprintf("Error retrieving the %s files", formField), http.StatusBadRequest)
+		return nil, false
+	}
+	if len(fileHeaders) > maxFiles {
+		http.Error(w, fmt.Sprintf("You can upload up to %d more photos", maxFiles), http.StatusBadRequest)
+		return nil, false
+	}
+
+	uploads := make([]storedUpload, 0, len(fileHeaders))
+	for _, fileHeader := range fileHeaders {
+		if fileHeader.Size > maxUploadSize {
+			removeStoredUploads(uploads)
+			http.Error(w, "Each photo must be 5MB or smaller", http.StatusBadRequest)
+			return nil, false
+		}
+
+		upload, ok := storeUploadedImageFromHeader(w, userID, fileHeader, subDir)
+		if !ok {
+			removeStoredUploads(uploads)
+			return nil, false
+		}
+		uploads = append(uploads, upload)
+	}
+
+	return uploads, true
 }
 
 func storeUploadedImage(w http.ResponseWriter, r *http.Request, userID uint, formField, subDir string) (storedUpload, bool) {
@@ -426,6 +485,56 @@ func storeUploadedImage(w http.ResponseWriter, r *http.Request, userID uint, for
 		FilePath:  filePath,
 		PublicURL: fmt.Sprintf("/uploads/%s/%s", subDir, newFileName),
 	}, true
+}
+
+func storeUploadedImageFromHeader(w http.ResponseWriter, userID uint, fileHeader *multipart.FileHeader, subDir string) (storedUpload, bool) {
+	file, err := fileHeader.Open()
+	if err != nil {
+		http.Error(w, "Error retrieving the photo file", http.StatusBadRequest)
+		return storedUpload{}, false
+	}
+	defer file.Close()
+
+	if err := validateImageUpload(file, fileHeader.Filename); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return storedUpload{}, false
+	}
+
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
+	newFileName := fmt.Sprintf("user_%d_%d%s", userID, time.Now().UnixNano(), ext)
+	uploadDir := filepath.Join(".", "uploads", subDir)
+	if err := os.MkdirAll(uploadDir, 0o755); err != nil {
+		http.Error(w, "Failed to create upload directory", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+
+	filePath := filepath.Join(uploadDir, newFileName)
+	dst, err := os.Create(filePath)
+	if err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+	defer dst.Close()
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		http.Error(w, "Failed to process uploaded file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+	if _, err := io.Copy(dst, file); err != nil {
+		http.Error(w, "Failed to save file", http.StatusInternalServerError)
+		return storedUpload{}, false
+	}
+
+	return storedUpload{
+		FilePath:  filePath,
+		PublicURL: fmt.Sprintf("/uploads/%s/%s", subDir, newFileName),
+	}, true
+}
+
+func removeStoredUploads(uploads []storedUpload) {
+	for _, upload := range uploads {
+		_ = os.Remove(upload.FilePath)
+	}
 }
 
 func validateImageUpload(file multipart.File, filename string) error {

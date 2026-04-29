@@ -15,6 +15,7 @@ function profileResponseData(responseData){
         lastName: String(responseData.lastName ?? ""),
         email: String(responseData.email ?? ""),
         avatar: String(responseData.avatar ?? ""),
+        photos: Array.isArray(responseData.photos) ? responseData.photos : [],
         // password: String(responseData.password ?? ""),
         gender: String(responseData.gender ?? ""),
         preferences: String(responseData.preferences ?? ""),
@@ -30,6 +31,7 @@ export default function UserProfile(){
         lastName: "",
         email: "",
         avatar: "",
+        photos: [],
         gender: "",
         preferences: "",
         bio: "",
@@ -66,7 +68,7 @@ export default function UserProfile(){
             catch(error){
                 console.log("ERROR", error);
             }
-        }else if(["username", "firstName", "lastName", "email"]){
+        }else if(["username", "firstName", "lastName", "email"].includes(name)){
             try{
                 const response = await axiosInstance.patch('/backend/api/accounts/user/update',{
                     [name] : value
@@ -96,9 +98,6 @@ export default function UserProfile(){
         catch(error){
             console.log("LOGOUT ERROR", error);
         }
-        finally{
-
-        }
     }
 
     const uploadAvatar = async (e) => {
@@ -107,13 +106,6 @@ export default function UserProfile(){
             console.warn("No file selected");
             return;
         }
-
-        // console.log("File info:", {
-        //     name: file.name,
-        //     size: file.size,
-        //     type: file.type,
-        //     lastModified: file.lastModified
-        // });
 
         const formData = new FormData();
         formData.append("avatar", file);
@@ -132,31 +124,105 @@ export default function UserProfile(){
             e.target.value = '';
 
         } catch (error) {
-            console.error("Upload failed - Full error:", error);
-            console.error("Error response status:", error.response?.status);
-            console.error("Error response data:", error.response?.data);
             console.error("Error message:", error.message);
             e.target.value = '';
         }
     };
 
+    const uploadPhotos = async (e) => {
+        const files = Array.from(e.target.files ?? []);
+        if (files.length === 0) {
+            console.warn("No file selected");
+            return;
+        }
+
+        const remainingSlots = 5 - userProfileData.photos.length;
+        if (remainingSlots <= 0) {
+            console.warn("You can upload up to 5 photos");
+            e.target.value = '';
+            return;
+        }
+        if (files.length > remainingSlots) {
+            console.warn(`You can upload only ${remainingSlots} more photo(s)`);
+            e.target.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        files.forEach((file) => {
+            formData.append("photos", file);
+        });
+
+        try {
+            const response = await axiosInstance.post(
+                "/backend/api/accounts/photo/upload",
+                formData
+            );
+
+            console.log("Upload success:", response.data.photos);
+            setUserProfileData(prev => ({
+                ...prev,
+                photos: [
+                    ...(prev.photos ?? []),
+                    ...(Array.isArray(response.data.photos) ? response.data.photos : [])
+                ].slice(0, 5)
+                }));
+            e.target.value = '';
+
+        } catch (error) {
+            console.error("Error message:", error.message);
+            e.target.value = '';
+        }
+    };
+
+    const fullName = [userProfileData.firstName, userProfileData.lastName].filter(Boolean).join(" ");
+
     return(
         <div id="user-profile-container">
             <div id="user-profile">
-            <h2>User Profile</h2>
-                <div className="avatar-wrapper">
-                    <img
-                        className="profile-avatar"
-                        src={userProfileData.avatar ? "/backend" + userProfileData.avatar : ""}
-                        alt={`${userProfileData.userName || "User"} avatar`}
-                    />
+                <div className="profile-header">
+                    <div className="avatar-wrapper">
+                        <img
+                            className="profile-avatar"
+                            src={userProfileData.avatar ? "/backend" + userProfileData.avatar : ""}
+                            alt={`${userProfileData.userName || "User"} avatar`}
+                        />
                         <input
                             type="file"
                             className="avatar-overlay-btn"
+                            accept="image/*"
                             onChange={uploadAvatar}/>
+                    </div>
+                    <div className="profile-heading">
+                        <p className="profile-kicker">User Profile</p>
+                        <h2>{fullName || userProfileData.userName || "Your profile"}</h2>
+                        <p className="profile-subtitle">{userProfileData.email || "Add your email"}</p>
+                    </div>
+                    <label className="photos-upload-button">
+                        Add photos
+                        <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={uploadPhotos}/>
+                    </label>
                 </div>
+                <section className="profile-photos" aria-label="Profile photos">
+                    {userProfileData.photos.map((photo) => (
+                        <img
+                            key={photo.id ?? photo.url}
+                            className="profile-photo"
+                            src={photo.url ? "/backend" + photo.url : ""}
+                            alt="User uploaded"
+                        />
+                    ))}
+                    {Array.from({ length: Math.max(0, 5 - userProfileData.photos.length) }).map((_, index) => (
+                        <div key={`empty-photo-${index}`} className="profile-photo profile-photo-empty" />
+                    ))}
+                </section>
                 <div className="profile-grid">
                     <div className="field username">
+                    <span className="field-label">Username</span>
                     <EditInputButton
                         type="text"
                         value={userProfileData.userName}
@@ -170,6 +236,7 @@ export default function UserProfile(){
                     />
                     </div>
                     <div className="field first-name">
+                        <span className="field-label">First name</span>
                         <EditInputButton
                             type="text"
                             value={userProfileData.firstName}
@@ -183,6 +250,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field last-name">
+                        <span className="field-label">Last name</span>
                         <EditInputButton
                             type="text"
                             value={userProfileData.lastName}
@@ -196,6 +264,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field email">
+                        <span className="field-label">Email</span>
                         <EditInputButton
                             type="text"
                             value={userProfileData.email}
@@ -209,6 +278,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field gender">
+                        <span className="field-label">Gender</span>
                         <EditSelectButton
                             value={userProfileData.gender}
                             placeholder="Gender"
@@ -221,6 +291,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field preferences">
+                        <span className="field-label">Preferences</span>
                         <EditSelectButton
                             value={userProfileData.preferences}
                             placeholder="Preferences"
@@ -233,6 +304,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field interests">
+                        <span className="field-label">Interests</span>
                         <EditTagSelectButton
                             value={userProfileData.interests}
                             tags={["#tag1", "#tag2", "#tag3"]}
@@ -245,6 +317,7 @@ export default function UserProfile(){
                         />
                     </div>
                     <div className="field bio">
+                        <span className="field-label">Bio</span>
                         <EditInputButton
                             type="text"
                             value={userProfileData.bio}
