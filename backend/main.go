@@ -45,6 +45,7 @@ func main() {
 	privateMux.HandleFunc(pat.Patch("/user/password/update"), updatePassword)
 	privateMux.HandleFunc(pat.Post("/avatar/upload"), uploadAvatar)
 	privateMux.HandleFunc(pat.Post("/photo/upload"), uploadPhoto)
+	privateMux.HandleFunc(pat.Delete("/photo/:photoID"), deletePhoto)
 
 	mux.Handle(pat.New("/uploads/*"), http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	mux.Handle(pat.New("/api/accounts/*"), privateMux)
