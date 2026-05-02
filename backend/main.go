@@ -27,6 +27,8 @@ func server_run(mux *goji.Mux) {
 func main() {
 	initDB()
 	mux := goji.NewMux()
+	hub := newWebsocketHub()
+	go hub.run()
 	privateMux := goji.SubMux()
 	privateMux.Use(authMiddleware)
 
@@ -46,6 +48,13 @@ func main() {
 	privateMux.HandleFunc(pat.Post("/avatar/upload"), uploadAvatar)
 	privateMux.HandleFunc(pat.Post("/photo/upload"), uploadPhoto)
 	privateMux.HandleFunc(pat.Delete("/photo/:photoID"), deletePhoto)
+	privateMux.HandleFunc(pat.Get("/ws"), websocketHandler(hub))
+	privateMux.HandleFunc(pat.Post("/notifications/send"), notificationHandler(hub))
+	privateMux.HandleFunc(pat.Get("/conversations"), listConversations)
+	privateMux.HandleFunc(pat.Get("/conversations/:conversationID/messages"), listConversationMessages)
+	privateMux.HandleFunc(pat.Patch("/messages/:messageID/read"), markMessageRead)
+	privateMux.HandleFunc(pat.Get("/notifications"), listNotifications)
+	privateMux.HandleFunc(pat.Patch("/notifications/:notificationID/read"), markNotificationRead)
 
 	mux.Handle(pat.New("/uploads/*"), http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 	mux.Handle(pat.New("/api/accounts/*"), privateMux)

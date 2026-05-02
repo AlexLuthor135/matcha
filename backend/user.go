@@ -556,88 +556,6 @@ func writePhotoUploadError(w http.ResponseWriter, err error) {
 	http.Error(w, "Failed to upload photo", http.StatusInternalServerError)
 }
 
-func deletePhoto(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value(userIDKey).(uint)
-	if !ok {
-		http.Error(w, "Unauthorized: Invalid context", http.StatusUnauthorized)
-		return
-	}
-
-	photoID, err := strconv.ParseUint(pat.Param(r, "photoID"), 10, 64)
-	if err != nil || photoID == 0 {
-		http.Error(w, "Invalid photo ID", http.StatusBadRequest)
-		return
-	}
-
-	var photo Photo
-	if err := DB.Where("id = ? AND user_id = ?", photoID, userID).First(&photo).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			http.Error(w, "Photo not found", http.StatusNotFound)
-			return
-		}
-		http.Error(w, "Failed to retrieve photo", http.StatusInternalServerError)
-		return
-	}
-
-	if err := removeStoredUpload(photo.URL); err != nil {
-		log.Printf("failed to remove photo %d for user %d: %v", photo.ID, userID, err)
-		http.Error(w, "Failed to delete photo file", http.StatusInternalServerError)
-		return
-	}
-
-	if err := DB.Delete(&photo).Error; err != nil {
-		http.Error(w, "Failed to delete photo", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]any{
-		"message":  "Photo deleted successfully",
-		"photo_id": photo.ID,
-	})
-}
-
-func createPhotoWithinLimit(userID uint, photo *Photo) error {
-	return DB.Transaction(func(tx *gorm.DB) error {
-		var user User
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).Select("id").First(&user, userID).Error; err != nil {
-			return err
-		}
-
-		if err := ensurePhotoLimitAvailable(tx, userID); err != nil {
-			return err
-		}
-
-		return tx.Create(photo).Error
-	})
-}
-
-func ensurePhotoLimitAvailable(db *gorm.DB, userID uint) error {
-	var photoCount int64
-	if err := db.Model(&Photo{}).Where("user_id = ?", userID).Count(&photoCount).Error; err != nil {
-		return err
-	}
-	if photoCount >= maxUserPhotos {
-		return errPhotoLimitReached
-	}
-
-	return nil
-}
-
-func writePhotoUploadError(w http.ResponseWriter, err error) {
-	if errors.Is(err, errPhotoLimitReached) {
-		http.Error(w, fmt.Sprintf("Maximum of %d photos allowed", maxUserPhotos), http.StatusBadRequest)
-		return
-	}
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		http.Error(w, "User not found", http.StatusNotFound)
-		return
-	}
-
-	http.Error(w, "Failed to upload photo", http.StatusInternalServerError)
-}
-
 func storeUploadedImage(w http.ResponseWriter, r *http.Request, userID uint, formField, subDir string) (storedUpload, bool) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxUploadSize)
 	if err := r.ParseMultipartForm(maxUploadSize); err != nil {
@@ -736,6 +654,25 @@ func removeStoredUploads(uploads []storedUpload) {
 	for _, upload := range uploads {
 		_ = os.Remove(upload.FilePath)
 	}
+}
+
+func removeStoredUpload(publicURL string) error {
+	relativePath := strings.TrimPrefix(publicURL, "/")
+	if !strings.HasPrefix(relativePath, "uploads/") {
+		return fmt.Errorf("invalid upload path: %s", publicURL)
+	}
+
+	cleanPath := filepath.Clean(relativePath)
+	if cleanPath == "." || strings.HasPrefix(cleanPath, "..") || !strings.HasPrefix(cleanPath, "uploads"+string(os.PathSeparator)) {
+		return fmt.Errorf("invalid upload path: %s", publicURL)
+	}
+
+	err := os.Remove(cleanPath)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+
+	return err
 }
 
 func validateImageUpload(file multipart.File, filename string) error {

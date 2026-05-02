@@ -1,6 +1,10 @@
 package main
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"gorm.io/gorm"
+)
 
 type RegisterRequest struct {
 	UserName  string `json:"username"`
@@ -36,4 +40,31 @@ type Photo struct {
 	gorm.Model
 	UserID uint   `gorm:"not null;index"`
 	URL    string `gorm:"not null"`
+}
+
+type Conversation struct {
+	gorm.Model
+	UserOneID uint          `gorm:"not null;uniqueIndex:idx_conversation_users"`
+	UserTwoID uint          `gorm:"not null;uniqueIndex:idx_conversation_users"`
+	Messages  []ChatMessage `gorm:"constraint:OnDelete:CASCADE;"`
+}
+
+type ChatMessage struct {
+	gorm.Model
+	ConversationID uint       `gorm:"not null;index"`
+	SenderID       uint       `gorm:"not null;index"`
+	RecipientID    uint       `gorm:"not null;index"`
+	Content        string     `gorm:"not null"`
+	ReadAt         *time.Time `gorm:"index"`
+}
+
+type Notification struct {
+	gorm.Model
+	UserID   uint       `gorm:"not null;index"`
+	SenderID *uint      `gorm:"index"`
+	Type     string     `gorm:"not null;default:'notification'"`
+	Title    string     `gorm:"not null;default:''"`
+	Message  string     `gorm:"not null"`
+	Data     string     `gorm:"type:jsonb;not null;default:'{}'"`
+	ReadAt   *time.Time `gorm:"index"`
 }
