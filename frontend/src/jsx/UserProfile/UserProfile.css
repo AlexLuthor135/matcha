@@ -162,120 +162,6 @@ gap: 1rem;
 width: 100%;
 }
 
-.profile-avatar{
-  width: var(--avatar-size);
-  height: var(--avatar-size);
-  border-radius: 50%;
-  object-fit: cover;
-  object-position: center;
-  display: block;
-  margin: 0 auto;
-  background: #f2f2f2;
-  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.18);
-}
-
-#user-profile .avatar-wrapper {
-  position: relative;
-  width: var(--avatar-size);
-  height: var(--avatar-size);
-  margin: 0;
-  flex: 0 0 auto;
-}
-
-#user-profile .avatar-wrapper .profile-avatar {
-  margin: 0;
-}
-
-#user-profile .avatar-overlay-btn {
-  position: absolute;
-  left: 8px;
-  right: 8px;
-  bottom: 8px;
-  padding: 8px 10px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(0, 0, 0, 0.68);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  opacity: 0;
-  transform: translateY(6px);
-  pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  box-shadow: none;
-}
-
-#user-profile .avatar-wrapper:hover .avatar-overlay-btn,
-#user-profile .avatar-wrapper:focus-within .avatar-overlay-btn {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-
-#user-profile .avatar-overlay-btn:hover,
-#user-profile .avatar-overlay-btn:active {
-  box-shadow: none;
-  transform: translateY(0);
-}
-
-#user-profile .photos-upload-button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 0 22px;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #ff4d6d, #fd8c9f);
-  color: white;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.32);
-  transition: all 0.3s ease;
-  white-space: nowrap;
-}
-
-#user-profile .photos-upload-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(255, 77, 109, 0.46);
-}
-
-#user-profile .photos-upload-button input {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-#user-profile .profile-photos {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  padding: 0.25rem 0 0.35rem;
-}
-
-#user-profile .profile-photo {
-  width: 100%;
-  aspect-ratio: 1;
-  border-radius: 8px;
-  object-fit: cover;
-  background: #f2f2f2;
-}
-
-#user-profile .profile-photo-empty {
-  border: 1px dashed rgba(255, 77, 109, 0.35);
-  background: linear-gradient(135deg, rgba(255, 77, 109, 0.06), rgba(253, 140, 159, 0.12));
-}
-
-@media (hover: none) {
-  #user-profile .avatar-overlay-btn {
-    opacity: 1;
-    transform: none;
-    pointer-events: auto;
-  }
-}
-
 .field {
   width: 100%;
   min-width: 0;
@@ -364,15 +250,6 @@ width: 100%;
     gap: 1rem;
   }
 
-  #user-profile .photos-upload-button {
-    grid-column: 1 / -1;
-    width: 100%;
-  }
-
-  #user-profile .profile-photos {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .profile-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
@@ -436,11 +313,8 @@ width: 100%;
     text-align: center;
   }
 
-  #user-profile .avatar-wrapper {
+  #user-profile .profile-avatar-wrapper {
     margin: 0 auto;
   }
 
-  #user-profile .profile-photos {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }

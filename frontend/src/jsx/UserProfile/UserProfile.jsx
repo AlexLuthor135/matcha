@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import EditInputButton from "../components/EditInputButton";
 import EditSelectButton from "../components/EditSelectButton";
 import EditTagSelectButton from "../components/EditTagSelectorButton";
+import ProfileAvatar from "../components/ProfileAvatar";
+import ProfilePhotos from "../components/ProfilePhotos";
 import "./UserProfile.css"
 
 function profileResponseData(responseData){
@@ -37,6 +39,7 @@ export default function UserProfile(){
         bio: "",
         interests: []
         });
+    const [deletingPhotoId, setDeletingPhotoId] = useState(null);
 
     // const navigate = useNavigate();
 
@@ -175,51 +178,48 @@ export default function UserProfile(){
         }
     };
 
+    const deletePhoto = async (photo) => {
+        if (!photo?.id || deletingPhotoId) {
+            return;
+        }
+
+        setDeletingPhotoId(photo.id);
+        try {
+            await axiosInstance.delete(`/backend/api/accounts/photo/${photo.id}`);
+            setUserProfileData(prev => ({
+                ...prev,
+                photos: (prev.photos ?? []).filter(currentPhoto => currentPhoto.id !== photo.id)
+            }));
+        } catch (error) {
+            console.error("Delete photo error:", error.message);
+        } finally {
+            setDeletingPhotoId(null);
+        }
+    };
+
     const fullName = [userProfileData.firstName, userProfileData.lastName].filter(Boolean).join(" ");
 
     return(
         <div id="user-profile-container">
             <div id="user-profile">
                 <div className="profile-header">
-                    <div className="avatar-wrapper">
-                        <img
-                            className="profile-avatar"
-                            src={userProfileData.avatar ? "/backend" + userProfileData.avatar : ""}
-                            alt={`${userProfileData.userName || "User"} avatar`}
-                        />
-                        <input
-                            type="file"
-                            className="avatar-overlay-btn"
-                            accept="image/*"
-                            onChange={uploadAvatar}/>
-                    </div>
+                    <ProfileAvatar
+                        avatarUrl={userProfileData.avatar}
+                        userName={userProfileData.userName}
+                        onChange={uploadAvatar}
+                    />
                     <div className="profile-heading">
                         <p className="profile-kicker">User Profile</p>
                         <h2>{fullName || userProfileData.userName || "Your profile"}</h2>
                         <p className="profile-subtitle">{userProfileData.email || "Add your email"}</p>
                     </div>
-                    <label className="photos-upload-button">
-                        Add photos
-                        <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={uploadPhotos}/>
-                    </label>
                 </div>
-                <section className="profile-photos" aria-label="Profile photos">
-                    {userProfileData.photos.map((photo) => (
-                        <img
-                            key={photo.id ?? photo.url}
-                            className="profile-photo"
-                            src={photo.url ? "/backend" + photo.url : ""}
-                            alt="User uploaded"
-                        />
-                    ))}
-                    {Array.from({ length: Math.max(0, 5 - userProfileData.photos.length) }).map((_, index) => (
-                        <div key={`empty-photo-${index}`} className="profile-photo profile-photo-empty" />
-                    ))}
-                </section>
+                <ProfilePhotos
+                    photos={userProfileData.photos}
+                    deletingPhotoId={deletingPhotoId}
+                    onUpload={uploadPhotos}
+                    onDelete={deletePhoto}
+                />
                 <div className="profile-grid">
                     <div className="field username">
                     <span className="field-label">Username</span>

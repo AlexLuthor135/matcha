@@ -1,0 +1,145 @@
+.photo-actions {
+  display: grid;
+  gap: 0.65rem;
+  justify-items: stretch;
+}
+
+.photos-upload-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #ff4d6d, #fd8c9f);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.32);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.photos-upload-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 77, 109, 0.46);
+}
+
+.photos-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.photos-delete-button {
+  min-height: 42px;
+  padding: 0 22px;
+  border: 1px solid rgba(255, 77, 109, 0.35);
+  border-radius: 30px;
+  background: white;
+  color: #ff4d6d;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.12);
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.photos-delete-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(255, 77, 109, 0.22);
+}
+
+.photos-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
+}
+
+.profile-photos {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0.25rem 0 0.35rem;
+}
+
+.profile-photo-frame {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.profile-photo-frame.is-delete-mode {
+  box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.25);
+}
+
+.profile-photo {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f2f2f2;
+  display: block;
+}
+
+.profile-photo-delete {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.72);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.profile-photo-delete:hover:not(:disabled) {
+  transform: none;
+  box-shadow: none;
+  background: rgba(255, 77, 109, 0.92);
+}
+
+.profile-photo-delete:disabled {
+  cursor: wait;
+  opacity: 0.75;
+}
+
+.profile-photo-empty {
+  border: 1px dashed rgba(255, 77, 109, 0.35);
+  background: linear-gradient(135deg, rgba(255, 77, 109, 0.06), rgba(253, 140, 159, 0.12));
+}
+
+@media (max-width: 768px) {
+  .photo-actions {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .photos-upload-button,
+  .photos-delete-button {
+    width: 100%;
+  }
+
+  .profile-photos {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-photos {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

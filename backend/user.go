@@ -72,6 +72,7 @@ type PublicProfileResponse struct {
 	ID          uint            `json:"id"`
 	UserName    string          `json:"userName"`
 	FirstName   string          `json:"firstName"`
+	LastName    string          `json:"lastName"`
 	Gender      string          `json:"gender"`
 	Preferences string          `json:"preferences"`
 	Bio         string          `json:"bio"`
@@ -657,6 +658,10 @@ func removeStoredUploads(uploads []storedUpload) {
 }
 
 func removeStoredUpload(publicURL string) error {
+	if publicURL == "" {
+		return nil
+	}
+
 	relativePath := strings.TrimPrefix(publicURL, "/")
 	if !strings.HasPrefix(relativePath, "uploads/") {
 		return fmt.Errorf("invalid upload path: %s", publicURL)
@@ -720,6 +725,7 @@ func buildPublicProfileResponse(user User) PublicProfileResponse {
 		ID:          user.ID,
 		UserName:    user.UserName,
 		FirstName:   user.FirstName,
+		LastName:    user.LastName,
 		Gender:      user.Gender,
 		Preferences: user.Preferences,
 		Bio:         user.Bio,

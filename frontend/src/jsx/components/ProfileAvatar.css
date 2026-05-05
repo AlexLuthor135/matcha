@@ -1,0 +1,65 @@
+.profile-avatar-wrapper {
+  position: relative;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  margin: 0;
+  flex: 0 0 auto;
+}
+
+.profile-avatar {
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  margin: 0;
+  background: #f2f2f2;
+  box-shadow: 0 8px 20px rgba(255, 77, 109, 0.18);
+}
+
+.avatar-upload-control {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.68);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0;
+  transform: translateY(6px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: none;
+}
+
+.profile-avatar-wrapper:hover .avatar-upload-control,
+.profile-avatar-wrapper:focus-within .avatar-upload-control {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.avatar-upload-control input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+@media (hover: none) {
+  .avatar-upload-control {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+}

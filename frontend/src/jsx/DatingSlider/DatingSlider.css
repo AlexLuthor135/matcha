@@ -1,0 +1,51 @@
+.dating-profile {
+  min-height: 420px;
+}
+
+.dating-header {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.dating-username,
+.dating-small {
+  font-size: 0.82rem;
+}
+
+.dating-photos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.85rem;
+}
+
+.dating-photo {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border: 1px solid rgba(255, 77, 109, 0.12);
+  border-radius: 8px;
+  object-fit: cover;
+  background: #f7f7f7;
+}
+
+.dating-photo-empty {
+  display: grid;
+  place-items: center;
+  color: #777;
+  font-size: 0.95rem;
+}
+
+.dating-status {
+  margin: auto;
+  color: #555;
+  font-size: 1rem;
+  text-align: center;
+}
+
+.dating-profile .profile-actions {
+  gap: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .dating-photos {
+    grid-template-columns: 1fr 1fr;
+  }
+}
