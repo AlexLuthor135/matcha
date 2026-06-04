@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"net/url"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"gorm.io/gorm"
 )
 
 const (
@@ -249,14 +247,6 @@ func notificationHandler(hub *websocketHub) http.HandlerFunc {
 		currentUserID, ok := r.Context().Value(userIDKey).(uint)
 		if !ok {
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-		if err := requireStaffUser(currentUserID); err != nil {
-			if errors.Is(err, gorm.ErrRecordNotFound) {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
-				return
-			}
-			http.Error(w, "Forbidden", http.StatusForbidden)
 			return
 		}
 

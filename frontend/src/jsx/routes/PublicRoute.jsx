@@ -1,18 +1,14 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../AuthProvider";
-import LoadingScreen from "../LoadingScreen";
+import LoadingScreen from "../components/LoadingScreen";
 
 const PublicRoute = ({ children }) => {
-  const { isLoggedIn, isLoading, staff } = useAuth();
+  const { isLoggedIn, isLoading } = useAuth();
   if (isLoading) return <LoadingScreen message="Authentication..." />;
 
-  if (isLoggedIn && staff) {
-    return <Navigate to="/admins/dashboard" replace />;
-  }
-
   if (isLoggedIn) {
-    return <Navigate to="/profile" replace />;
+    return <Navigate to="/userprofile" replace />;
   }
 
   return children;

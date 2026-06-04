@@ -171,17 +171,6 @@ func createSystemNotification(hub *websocketHub, userID uint, title string, mess
 	return notification, nil
 }
 
-func requireStaffUser(userID uint) error {
-	var user User
-	if err := DB.Select("id", "is_staff").First(&user, userID).Error; err != nil {
-		return err
-	}
-	if !user.IsStaff {
-		return errors.New("staff access required")
-	}
-	return nil
-}
-
 func listConversations(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(userIDKey).(uint)
 	if !ok {

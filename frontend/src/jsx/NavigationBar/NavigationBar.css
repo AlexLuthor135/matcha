@@ -15,6 +15,10 @@ h2, p {
   z-index: 1000;
 }
 
+.navigation-bar li {
+  display: flex;
+}
+
 .navigation-bar li a {
   display: block;
   color: white;
@@ -28,4 +32,12 @@ h2, p {
 
 .navigation-bar li a.active {
   background-color: #04AA6D;
+}
+
+.navigation-bar .navigation-notifications {
+  margin-left: 0;
+}
+
+.navigation-bar .navigation-filter {
+  margin-left: auto;
 }

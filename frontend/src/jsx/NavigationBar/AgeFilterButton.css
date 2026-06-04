@@ -1,0 +1,88 @@
+.age-filter {
+  position: relative;
+}
+
+.age-filter-button {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 0;
+  background: transparent;
+  color: white;
+  font: inherit;
+  cursor: pointer;
+}
+
+.age-filter-button:hover,
+.age-filter-button[aria-expanded="true"] {
+  background: #111111;
+}
+
+.age-filter-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: min(300px, calc(100vw - 24px));
+  padding: 1rem;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+  color: #333333;
+  z-index: 1200;
+}
+
+.age-filter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.age-filter-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.2;
+}
+
+.age-filter-header span {
+  color: #04aa6d;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.age-filter-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.age-filter-fields label {
+  display: grid;
+  gap: 0.35rem;
+  color: #555555;
+  font-size: 0.85rem;
+}
+
+.age-filter-fields input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  border-radius: 6px;
+  color: #333333;
+  font: inherit;
+}
+
+.age-filter-sliders {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+}
+
+.age-filter-sliders input {
+  width: 100%;
+  accent-color: #04aa6d;
+}

@@ -26,7 +26,6 @@ type User struct {
 	LastName    string `gorm:"not null"`
 	Email       string `gorm:"unique;not null"`
 	Password    string `gorm:"not null"`
-	IsStaff     bool   `gorm:"default:false"`
 	IsCompleted bool   `gorm:"default:false"`
 	Gender      string
 	Preferences string

@@ -156,9 +156,9 @@ func verifyUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"is_staff": user.IsStaff,
-        "is_completed": user.IsCompleted,
-    })
+		"id": user.ID,
+		"is_completed": user.IsCompleted,
+	})
 }
 
 func logoutUser(w http.ResponseWriter, r *http.Request) {
