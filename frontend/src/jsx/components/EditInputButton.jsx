@@ -4,7 +4,7 @@ import { Button } from "./Button";
 
 export default function EditInputButton(props) {
     const [isEditing, setIsEditing] = useState(false);
-    const { userProfileData, onChange, onSave, value, ...inputProps } = props;
+    const { onChange, onSave, value, ...inputProps } = props;
 
     const handleSave = () => {
         if (typeof onSave === "function") {

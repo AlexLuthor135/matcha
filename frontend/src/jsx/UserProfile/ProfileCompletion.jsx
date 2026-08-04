@@ -9,7 +9,7 @@ import axiosInstance from "../AxiosInstance";
 import { useAuth } from "../AuthProvider";
 import { useNavigate } from "react-router-dom";
 
-export default function BioСompletion(){
+export default function ProfileCompletion(){
     const [userBio, setUserBio] = useState({
         gender : '',
         preferences: '',
@@ -18,7 +18,7 @@ export default function BioСompletion(){
     });
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
-    // const {isCompleted, setIsCompleted} = useAuth();
+    const { setIsCompleted } = useAuth();
 
     const handleChange = (name, value) => {
         setUserBio(prev => ({
@@ -35,15 +35,15 @@ export default function BioСompletion(){
         setLoading(true);
         console.log("USER BIO : ", userBio)
         try{
-            const response = await axiosInstance.post('/backend/api/accounts/bio/create', {
+            const response = await axiosInstance.post('/backend/api/accounts/profile/complete', {
                 gender: userBio.gender,
                 preferences: userBio.preferences,
                 bio: userBio.bio,
-                interests: userBio.interests,
-                isCompleted: true
+                interests: userBio.interests
             })
         console.log("response status",response.status)
         if(response.status === 200){
+            setIsCompleted(response.data.is_completed === true);
             console.log("Naivgating User Profile")
             navigate('/userprofile');
         }

@@ -13,7 +13,7 @@ export default function LoginPage() {
       password: '',
   });
   const [loading, setLoading] = useState(false);
-  const {isLoggedIn, setIsLoggedIn,isCompleted, setIsCompleted} = useAuth();
+  const { isLoggedIn, isCompleted, verifyLogin } = useAuth();
 
   const navigate = useNavigate();
 
@@ -21,12 +21,12 @@ export default function LoginPage() {
 
       if (isLoggedIn && !isCompleted) {
       console.log("REGISTR IS NOT COMPLETED", isCompleted);
-        navigate('/biocompletion');
+        navigate('/profile-completion');
       }else if(isLoggedIn && isCompleted){
         navigate("/userprofile");
         console.log("REGISTR IS COMPLETED", isCompleted);
       }
-  }, [isLoggedIn, navigate]);
+  }, [isCompleted, isLoggedIn, navigate]);
 
   const handleChange = (e) => {
       const { name, value } = e.target;
@@ -43,17 +43,14 @@ export default function LoginPage() {
     setLoading(true);
       
     try{
-      const response = await axiosInstance.post('/backend/api/login', {
+      await axiosInstance.post('/backend/api/login', {
         email : loginData.loginEmail,
         password : loginData.password
       });
-      console.log('LOGIN SUCCESS : ', isLoggedIn)
-      console.log('LOGIN RESPONSE DATA : ', response.data)
-      setIsLoggedIn(true);
-      if(response.data.IsCompleted)
-        setIsCompleted(true)
-      // if(response.status === 200)
-      //   setIsCompleted(true)
+      const verifiedUser = await verifyLogin();
+      if (!verifiedUser) {
+        throw new Error("Login succeeded, but user verification failed");
+      }
     }
     catch(err){
       console.log(err)

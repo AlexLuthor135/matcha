@@ -9,8 +9,7 @@ services:
     ports:
       - 5432:5432
     networks:
-      backend_network:
-        ipv4_address: 172.20.0.2
+      - backend_network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -19,8 +18,7 @@ services:
     ports:
       - 5050:80
     networks:
-      backend_network:
-        ipv4_address: 172.20.0.5
+      - backend_network
     volumes:
       - pgadmin_data:/var/lib/pgadmin
 
@@ -36,10 +34,8 @@ services:
     ports:
       - "8000:8000"
     networks:
-      frontend_network:
-        ipv4_address: 172.19.0.3
-      backend_network:
-        ipv4_address: 172.20.0.6
+      - frontend_network
+      - backend_network
     env_file:
       - ./.env
     depends_on:
@@ -60,8 +56,7 @@ services:
       - VITE_HMR=true
       - HOST=0.0.0.0
     networks:
-      frontend_network:
-        ipv4_address: 172.19.0.4
+      - frontend_network
     depends_on:
       - web
 
@@ -70,8 +65,7 @@ services:
       ports:
         - "6379:6379"
       networks:
-        backend_network:
-          ipv4_address: 172.20.0.4
+        - backend_network
 
   nginx:
     image: nginx:latest
@@ -84,23 +78,15 @@ services:
       - web
       - frontend
     networks:
-      frontend_network:
-        ipv4_address: 172.19.0.2
+      - frontend_network
+      - backend_network
 
 networks:
   frontend_network:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.19.0.0/16
 
   backend_network:
     driver: bridge
-    ipam:
-      driver: default
-      config:
-        - subnet: 172.20.0.0/16
 
 volumes:
   postgres_data:

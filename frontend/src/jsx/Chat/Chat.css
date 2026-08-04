@@ -144,15 +144,24 @@
   overflow-wrap: anywhere;
 }
 
-.chat-message time {
-  display: block;
+.chat-message-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
   margin-top: 0.25rem;
   font-size: 0.72rem;
   color: #777;
 }
 
-.chat-message.is-mine time {
+.chat-message.is-mine .chat-message-meta {
+  justify-content: flex-end;
   color: rgba(255, 255, 255, 0.78);
+}
+
+.chat-message-meta time,
+.chat-message-meta span {
+  color: inherit;
+  font-size: inherit;
 }
 
 .chat-empty {

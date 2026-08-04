@@ -33,12 +33,11 @@ const [userBio, setUserBio] = useState({
         setLoading(true);
         console.log("Updated USER BIO : ", userBio)
         try{
-            const response = await axiosInstance.patch('/backend/api/accounts/bio/update', {
+            const response = await axiosInstance.patch('/backend/api/accounts/profile', {
                 gender: userBio.gender,
                 preferences: userBio.preferences,
                 bio: userBio.bio,
-                interests: userBio.interests,
-                isCompleted: true
+                interests: userBio.interests
             })
         console.log("response status",response.status)
         if(response.status === 200){

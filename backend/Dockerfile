@@ -1,5 +1,5 @@
 # pull official base image
-FROM golang:1.25-alpine
+FROM golang:1.26-alpine
 
 # set work directory
 WORKDIR /backend
@@ -9,7 +9,8 @@ RUN apk update && apk add --no-cache \
     netcat-openbsd \
     postgresql-client
 
-RUN go install github.com/air-verse/air@latest
+RUN go install github.com/air-verse/air@v1.67.3
+RUN go install github.com/pressly/goose/v3/cmd/goose@v3.27.1
 COPY go.mod go.sum* ./
 RUN go mod download
 

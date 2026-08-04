@@ -37,7 +37,7 @@ axiosInstance.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
       try {
-        await rawAxios.post('/backend/api/accounts/token/refresh/');
+        await rawAxios.post('/backend/api/accounts/token/refresh');
         await new Promise(resolve => setTimeout(resolve, 50));
         return axiosInstance(originalRequest);
       } catch (refreshError) {

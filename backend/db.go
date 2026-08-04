@@ -1,39 +1,37 @@
 package main
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"log"
 	"os"
-
-	"gorm.io/driver/postgres"
-	"gorm.io/gorm"
+	"time"
 )
 
-func initDB() {
-	host := os.Getenv("SQL_HOST")
-	user := os.Getenv("SQL_USER")
-	password := os.Getenv("SQL_PASSWORD")
-	dbname := os.Getenv("SQL_DATABASE")
-	port := os.Getenv("SQL_PORT")
+func env(str string) string {
+	return os.Getenv(str)
+}
 
-	if host == "" {
-		host = "db"
-		port = "5432"
-	}
+func initDB() *sql.DB {
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-		host, user, password, dbname, port)
-
-	var err error
-
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	dsn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable",
+		env("SQL_USER"), env("SQL_PASSWORD"), env("SQL_HOST"), env("SQL_PORT"), env("SQL_DATABASE"))
+	db, err := sql.Open("pgx", dsn)
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
+		log.Fatalf("Failed to connect to DB: %v", err)
 	}
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(25)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
-	err = DB.AutoMigrate(&User{}, &Photo{}, &Conversation{}, &ChatMessage{}, &Notification{})
-	if err != nil {
-		log.Fatalf("Failed to migrate database: %v", err)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		log.Fatalf("Failed to ping to DB: %v", err)
 	}
-	fmt.Println("Database connection established and migrated successfully")
+	fmt.Println("Database initialization successful")
+	return db
 }

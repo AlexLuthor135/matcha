@@ -1,5 +1,8 @@
 .env
 frontend/node_modules
+backend/tmp/
+backend/backend
+frontend/dist/
 backend/uploads/avatars/
 backend/uploads/photos/
 backend/.gocache

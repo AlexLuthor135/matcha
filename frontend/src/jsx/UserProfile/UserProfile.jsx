@@ -1,6 +1,8 @@
 import { Button } from "../components/Button";
 import axiosInstance from "../AxiosInstance";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../AuthProvider";
 import EditInputButton from "../components/EditInputButton";
 import EditSelectButton from "../components/EditSelectButton";
 import EditTagSelectButton from "../components/EditTagSelectorButton";
@@ -12,9 +14,9 @@ function profileResponseData(responseData){
     if(!responseData ||typeof responseData !== "object")
         throw new Error("Invalid profile data")
     return {
-        userName: String(responseData.userName ?? ""),
-        firstName: String(responseData.firstName ?? ""),
-        lastName: String(responseData.lastName ?? ""),
+        userName: String(responseData.user_name ?? ""),
+        firstName: String(responseData.first_name ?? ""),
+        lastName: String(responseData.last_name ?? ""),
         email: String(responseData.email ?? ""),
         avatar: String(responseData.avatar ?? ""),
         photos: Array.isArray(responseData.photos) ? responseData.photos : [],
@@ -26,6 +28,12 @@ function profileResponseData(responseData){
     }
 }
 export default function UserProfile(){
+    const navigate = useNavigate();
+    const {
+        setIsLoggedIn,
+        setIsCompleted,
+        setUserID,
+    } = useAuth();
 
     const [userProfileData, setUserProfileData] = useState({
         userName: "",
@@ -46,7 +54,7 @@ export default function UserProfile(){
     useEffect(() => {
         const getUserProfile = async () => {
             try{
-                const response = await axiosInstance.get('/backend/api/accounts/bio/get');
+                const response = await axiosInstance.get('/backend/api/accounts/profile');
                 console.log("USER response DATA : ",response.data)
                 const userProfileData = profileResponseData(response.data)
                 setUserProfileData(userProfileData);
@@ -63,7 +71,7 @@ export default function UserProfile(){
     const handleSaveData = async (name, value) =>{
         if(["bio", "interests", "preferences", "gender"].includes(name)){
             try{
-                const response = await axiosInstance.patch('/backend/api/accounts/bio/update',{
+                const response = await axiosInstance.patch('/backend/api/accounts/profile',{
                     [name] : value
                 })
                 console.log("AXIOS BIO SAVED" , response.data);
@@ -71,10 +79,16 @@ export default function UserProfile(){
             catch(error){
                 console.log("ERROR", error);
             }
-        }else if(["username", "firstName", "lastName", "email"].includes(name)){
+        }else if(["userName", "firstName", "lastName", "email"].includes(name)){
             try{
-                const response = await axiosInstance.patch('/backend/api/accounts/user/update',{
-                    [name] : value
+                const apiFieldNames = {
+                    userName: "user_name",
+                    firstName: "first_name",
+                    lastName: "last_name",
+                    email: "email",
+                };
+                const response = await axiosInstance.patch('/backend/api/accounts/user',{
+                    [apiFieldNames[name]] : value
                 })
                 console.log("AXIOS USER SAVED" , response.data);
             }
@@ -97,6 +111,10 @@ export default function UserProfile(){
             const response = await axiosInstance.post('/backend/api/accounts/logout/', {
             })
             console.log("LOGOUT COMLETED", response.status)
+            setIsLoggedIn(false);
+            setIsCompleted(false);
+            setUserID(null);
+            navigate("/", { replace: true });
         }
         catch(error){
             console.log("LOGOUT ERROR", error);
@@ -115,7 +133,7 @@ export default function UserProfile(){
 
         try {
             const response = await axiosInstance.post(
-                "/backend/api/accounts/avatar/upload",
+                "/backend/api/accounts/avatar",
                 formData
             );
 
@@ -158,7 +176,7 @@ export default function UserProfile(){
 
         try {
             const response = await axiosInstance.post(
-                "/backend/api/accounts/photo/upload",
+                "/backend/api/accounts/photos",
                 formData
             );
 
@@ -185,7 +203,7 @@ export default function UserProfile(){
 
         setDeletingPhotoId(photo.id);
         try {
-            await axiosInstance.delete(`/backend/api/accounts/photo/${photo.id}`);
+            await axiosInstance.delete(`/backend/api/accounts/photos/${photo.id}`);
             setUserProfileData(prev => ({
                 ...prev,
                 photos: (prev.photos ?? []).filter(currentPhoto => currentPhoto.id !== photo.id)
@@ -231,7 +249,7 @@ export default function UserProfile(){
                         onChange={(e) => handleChange("userName",e.target.value)}
                         onSave={(savedValue) => {
                             console.log("Saved value:", savedValue);
-                            handleSaveData("username", savedValue);
+                            handleSaveData("userName", savedValue);
                         }}
                     />
                     </div>

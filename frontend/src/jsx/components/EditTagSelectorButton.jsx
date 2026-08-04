@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Button } from "./Button";
-import CustomSelect from "./CustomSelect";
 import TagSelector from "./TagSelector";
 
 export default function EditTagSelectButton(props) {

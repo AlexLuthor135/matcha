@@ -15,9 +15,9 @@ function normalizeProfile(profile) {
 
     return {
         id: profile.id,
-        userName: String(profile.userName ?? ""),
-        firstName: String(profile.firstName ?? ""),
-        lastName: String(profile.lastName ?? ""),
+        userName: String(profile.user_name ?? ""),
+        firstName: String(profile.first_name ?? ""),
+        lastName: String(profile.last_name ?? ""),
         avatar: String(profile.avatar ?? ""),
         photos: Array.isArray(profile.photos) ? profile.photos : [],
         bio: String(profile.bio ?? ""),
@@ -82,8 +82,8 @@ export default function DatingSlider() {
     useEffect(() => {
         const getCurrentUserName = async () => {
             try {
-                const response = await axiosInstance.get("/backend/api/accounts/bio/get");
-                setCurrentUserName(buildDisplayName(response.data, userID));
+                const response = await axiosInstance.get("/backend/api/accounts/profile");
+                setCurrentUserName(buildDisplayName(normalizeProfile(response.data), userID));
             } catch (requestError) {
                 console.log("CURRENT PROFILE ERROR", requestError);
                 setCurrentUserName(buildDisplayName(null, userID));

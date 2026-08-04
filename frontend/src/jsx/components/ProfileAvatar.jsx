@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import "./ProfileAvatar.css";
 
 export default function ProfileAvatar({ avatarUrl, userName, onChange }) {

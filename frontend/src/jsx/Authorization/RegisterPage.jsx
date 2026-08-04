@@ -10,7 +10,7 @@ import "../components/InputBlock.css"
 export default function RegisterPage(){
 
     const [userData, setUserData] = useState({
-        username: '',
+        userName: '',
         password: '',
         email: '',
         lastName: '',
@@ -47,7 +47,7 @@ export default function RegisterPage(){
             setConfirmPassword('');
             return;
         }
-        if(!userData.username || !userData.password || !confirmPassword || !userData.email){
+        if(!userData.userName || !userData.password || !confirmPassword || !userData.email){
             alert("Not all fields are filled!");
             return;
         }
@@ -57,7 +57,7 @@ export default function RegisterPage(){
 
         try{
             const response = await axiosInstance.post('/backend/api/register', {
-                username: userData.username,
+                user_name: userData.userName,
                 last_name: userData.lastName,
                 first_name: userData.firstName,
                 password: userData.password,
@@ -85,10 +85,10 @@ export default function RegisterPage(){
             <div id="authorize" className="register">
                 <InputBlock 
                             type="text"
-                            value={userData.username}
+                            value={userData.userName}
                             onChange={handleChange}
                             placeholder="Username"
-                            name="username"
+                            name="userName"
                 />
                 <div className="input-row">
                 <InputBlock 

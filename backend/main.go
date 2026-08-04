@@ -1,23 +1,18 @@
 package main
 
 import (
+	"backend/api"
+	"backend/chat"
+	"backend/middleware"
+	"backend/realtime"
+	"backend/user"
 	"fmt"
 	"log"
 	"net/http"
-
-	"gorm.io/gorm"
-
-	"goji.io"
-	"goji.io/pat"
 )
 
-var DB *gorm.DB
-
-func helloWorld(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Welcome to your new Go backend!")
-}
-
-func server_run(mux *goji.Mux) {
+func server_run(mux *http.ServeMux) {
+	fmt.Println("Starting Go server on port 8000...")
 	err := http.ListenAndServe("0.0.0.0:8000", mux)
 	if err != nil {
 		log.Fatalf("Server failed to start: %v", err)
@@ -25,39 +20,49 @@ func server_run(mux *goji.Mux) {
 }
 
 func main() {
-	initDB()
-	mux := goji.NewMux()
-	hub := newWebsocketHub()
-	go hub.run()
-	privateMux := goji.SubMux()
-	privateMux.Use(authMiddleware)
+	database := initDB()
+	defer database.Close()
 
-	mux.HandleFunc(pat.Get("/"), helloWorld)
-	mux.HandleFunc(pat.Post("/api/register"), registerUser)
-	mux.HandleFunc(pat.Post("/api/login"), loginUser)
-	mux.HandleFunc(pat.Post("/api/accounts/token/refresh/"), refreshToken)
+	hub := realtime.NewHub()
+	go hub.Run()
 
-	privateMux.HandleFunc(pat.Get("/verify_login/"), verifyUser)
-	privateMux.HandleFunc(pat.Post("/logout/"), logoutUser)
-	privateMux.HandleFunc(pat.Patch("/bio/update"), updateBio)
-	privateMux.HandleFunc(pat.Get("/bio/get"), getBio)
-	privateMux.HandleFunc(pat.Get("/profiles/feed"), getProfileFeed)
-	privateMux.HandleFunc(pat.Post("/bio/create"), createBio)
-	privateMux.HandleFunc(pat.Patch("/user/update"), updateUser)
-	privateMux.HandleFunc(pat.Patch("/user/password/update"), updatePassword)
-	privateMux.HandleFunc(pat.Post("/avatar/upload"), uploadAvatar)
-	privateMux.HandleFunc(pat.Post("/photo/upload"), uploadPhoto)
-	privateMux.HandleFunc(pat.Delete("/photo/:photoID"), deletePhoto)
-	privateMux.HandleFunc(pat.Get("/ws"), websocketHandler(hub))
-	privateMux.HandleFunc(pat.Post("/notifications/send"), notificationHandler(hub))
-	privateMux.HandleFunc(pat.Get("/conversations"), listConversations)
-	privateMux.HandleFunc(pat.Get("/conversations/:conversationID/messages"), listConversationMessages)
-	privateMux.HandleFunc(pat.Patch("/messages/:messageID/read"), markMessageRead)
-	privateMux.HandleFunc(pat.Get("/notifications"), listNotifications)
-	privateMux.HandleFunc(pat.Patch("/notifications/:notificationID/read"), markNotificationRead)
+	chatModule := chat.NewModule(database)
+	userModule := user.NewModule(database)
 
-	mux.Handle(pat.New("/uploads/*"), http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
-	mux.Handle(pat.New("/api/accounts/*"), privateMux)
-	fmt.Println("Starting Go server on port 8000...")
+	websocketHandler := realtime.NewWebsocketHandler(hub, chatModule.Service)
+
+	mux := http.NewServeMux()
+	privateMux := http.NewServeMux()
+
+	mux.Handle("/uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
+
+	mux.HandleFunc("POST /api/register", userModule.Handler.RegisterUser)
+	mux.HandleFunc("POST /api/login", userModule.Handler.LoginUser)
+	mux.HandleFunc("POST /api/accounts/token/refresh", api.RefreshToken)
+
+	privateMux.HandleFunc("GET /verify_login", userModule.Handler.VerifyUser)
+	privateMux.HandleFunc("GET /profile", userModule.Handler.GetProfile)
+	privateMux.HandleFunc("GET /profiles/feed", userModule.Handler.GetProfileFeed)
+	privateMux.HandleFunc("GET /ws", websocketHandler.Connect)
+	privateMux.HandleFunc("GET /conversations", chatModule.Handler.ListConversations)
+	privateMux.HandleFunc("GET /conversations/{conversationID}/messages", chatModule.Handler.ListConversationMessages)
+	// privateMux.HandleFunc("GET /notifications", listNotifications)
+
+	privateMux.HandleFunc("POST /logout/", userModule.Handler.LogoutUser)
+	privateMux.HandleFunc("POST /profile/complete", userModule.Handler.CompleteProfile)
+	privateMux.HandleFunc("POST /avatar", userModule.Handler.UploadAvatar)
+	privateMux.HandleFunc("POST /photos", userModule.Handler.UploadPhoto)
+	// privateMux.HandleFunc("POST /notifications/send", notificationHandler(hub))
+
+	privateMux.HandleFunc("PATCH /profile", userModule.Handler.UpdateProfile)
+	privateMux.HandleFunc("PATCH /user", userModule.Handler.UpdateUser)
+	privateMux.HandleFunc("PATCH /user/password", userModule.Handler.UpdatePassword)
+	privateMux.HandleFunc("PATCH /messages/{messageID}/read", chatModule.Handler.MarkMessageRead)
+	// privateMux.HandleFunc("PATCH /notifications/:notificationID/read", markNotificationRead)
+
+	privateMux.HandleFunc("DELETE /photos/{photoID}", userModule.Handler.DeletePhoto)
+
+	mux.Handle("/api/accounts/", http.StripPrefix("/api/accounts", middleware.AuthMiddleware(privateMux)))
+
 	server_run(mux)
 }

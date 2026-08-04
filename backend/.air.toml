@@ -6,7 +6,7 @@ tmp_dir = "tmp"
   # The command to compile your code
   cmd = "go build -o ./tmp/main ."
   # The binary to run
-  bin = "./tmp/main"
+  entrypoint = ["./tmp/main"]
   # Watch these extensions
   include_ext = ["go", "tpl", "tmpl", "html", "env"]
   # Ignore these directories

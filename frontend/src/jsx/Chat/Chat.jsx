@@ -37,6 +37,7 @@ export default function Chat() {
     const [draft, setDraft] = useState("");
     const [error, setError] = useState("");
     const messagesEndRef = useRef(null);
+    const pendingReadMessageIDsRef = useRef(new Set());
 
     const activeConversation = useMemo(
         () => conversations.find((conversation) => conversation.id === activeConversationID) || null,
@@ -106,9 +107,18 @@ export default function Chat() {
                 recipient_id: payload.recipient_id,
                 content: payload.message,
                 created_at: payload.created_at,
+                updated_at: payload.created_at,
+                read_at: null,
             };
 
             setMessages((currentMessages) => {
+                const belongsToOpenConversation =
+                    payload.conversation_id === activeConversationID;
+                const isOwnMessage = payload.sender_id === userID;
+
+                if (!belongsToOpenConversation && !isOwnMessage) {
+                    return currentMessages;
+                }
                 if (currentMessages.some((message) => message.id === nextMessage.id)) {
                     return currentMessages;
                 }
@@ -122,7 +132,6 @@ export default function Chat() {
                     id: payload.conversation_id,
                     user_one_id: userOneID,
                     user_two_id: userTwoID,
-                    last_message: nextMessage,
                     updated_at: payload.created_at,
                 };
                 const existingConversations = currentConversations.filter(
@@ -131,9 +140,21 @@ export default function Chat() {
                 return [nextConversation, ...existingConversations];
             });
 
-            setActiveConversationID(payload.conversation_id);
-            setRecipientID(String(payload.sender_id === userID ? payload.recipient_id : payload.sender_id));
-            setSearchParams({ user: String(payload.sender_id === userID ? payload.recipient_id : payload.sender_id) });
+            if (payload.sender_id === userID) {
+                setActiveConversationID(payload.conversation_id);
+                setRecipientID(String(payload.recipient_id));
+                setSearchParams({ user: String(payload.recipient_id) });
+            }
+        });
+
+        const unsubscribeMessageRead = subscribe("message_read", (payload) => {
+            pendingReadMessageIDsRef.current.delete(payload.message_id);
+
+            setMessages((currentMessages) => currentMessages.map((message) => (
+                message.id === payload.message_id
+                    ? { ...message, read_at: payload.read_at }
+                    : message
+            )));
         });
 
         const unsubscribeError = subscribe("error", (payload) => {
@@ -142,9 +163,42 @@ export default function Chat() {
 
         return () => {
             unsubscribeChat();
+            unsubscribeMessageRead();
             unsubscribeError();
         };
-    }, [setSearchParams, subscribe, userID]);
+    }, [activeConversationID, setSearchParams, subscribe, userID]);
+
+    useEffect(() => {
+        if (status !== "connected" || !activeConversationID || !userID) {
+            if (status !== "connected") {
+                pendingReadMessageIDsRef.current.clear();
+            }
+            return;
+        }
+
+        messages.forEach((message) => {
+            const isUnreadIncomingMessage =
+                message.conversation_id === activeConversationID &&
+                message.recipient_id === userID &&
+                !message.read_at;
+
+            if (
+                !isUnreadIncomingMessage ||
+                pendingReadMessageIDsRef.current.has(message.id)
+            ) {
+                return;
+            }
+
+            const isSent = send({
+                type: "message_read",
+                message_id: message.id,
+            });
+
+            if (isSent) {
+                pendingReadMessageIDsRef.current.add(message.id);
+            }
+        });
+    }, [activeConversationID, messages, send, status, userID]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -216,7 +270,7 @@ export default function Chat() {
                                 onClick={() => selectConversation(conversation)}
                             >
                                 <span>User #{peerID}</span>
-                                <small>{conversation.last_message?.content || "No messages yet"}</small>
+                                <small>Open conversation</small>
                             </button>
                         );
                     }) : (
@@ -242,7 +296,12 @@ export default function Chat() {
                                 className={`chat-message${isMine ? " is-mine" : ""}`}
                             >
                                 <p>{message.content}</p>
-                                <time>{formatMessageTime(message.created_at)}</time>
+                                <div className="chat-message-meta">
+                                    <time>{formatMessageTime(message.created_at)}</time>
+                                    {isMine ? (
+                                        <span>{message.read_at ? "Read" : "Sent"}</span>
+                                    ) : null}
+                                </div>
                             </div>
                         );
                     }) : (
