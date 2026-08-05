@@ -11,6 +11,8 @@ type fakeUserRepository struct {
 	updateAvatarURLFn func(context.Context, uint, string) (string, error)
 	createPhotosFn    func(context.Context, uint, []string, int) ([]models.Photo, error)
 	deletePhotoFn     func(context.Context, uint, uint) (string, error)
+	saveDecisionFn    func(context.Context, uint, uint, models.ProfileDecisionValue) (models.ProfileDecision, bool, error)
+	listMatchesFn     func(context.Context, uint) ([]models.Match, error)
 }
 
 func (repo *fakeUserRepository) GetAvatarURL(ctx context.Context, userID uint) (string, error) {
@@ -39,6 +41,25 @@ func (repo *fakeUserRepository) DeletePhoto(ctx context.Context, userID uint, ph
 		panic("unexpected DeletePhoto call")
 	}
 	return repo.deletePhotoFn(ctx, userID, photoID)
+}
+
+func (repo *fakeUserRepository) SaveProfileDecision(
+	ctx context.Context,
+	userID uint,
+	targetUserID uint,
+	decision models.ProfileDecisionValue,
+) (models.ProfileDecision, bool, error) {
+	if repo.saveDecisionFn == nil {
+		panic("unexpected SaveProfileDecision call")
+	}
+	return repo.saveDecisionFn(ctx, userID, targetUserID, decision)
+}
+
+func (repo *fakeUserRepository) ListMatches(ctx context.Context, userID uint) ([]models.Match, error) {
+	if repo.listMatchesFn == nil {
+		panic("unexpected ListMatches call")
+	}
+	return repo.listMatchesFn(ctx, userID)
 }
 
 type fakeImageStorage struct {

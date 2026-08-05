@@ -7,5 +7,6 @@ BEGIN;
 \ir schema/003_conversations.sql
 \ir schema/004_chat_messages.sql
 \ir schema/005_notifications.sql
+\ir schema/006_profile_decisions.sql
 
 COMMIT;

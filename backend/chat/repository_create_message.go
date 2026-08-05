@@ -24,6 +24,20 @@ func (repo *PostgresRepository) CreateMessage(ctx context.Context, senderID uint
 	if !recipientExists {
 		return models.Message{}, ChatErrors.RecipientNotFound
 	}
+	const matchQuery = `
+	SELECT
+		EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $1 AND target_user_id = $2 AND decision = 'like')
+		AND
+		EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $2 AND target_user_id = $1 AND decision = 'like')
+`
+	var usersAreMatched bool
+	err = tx.QueryRowContext(ctx, matchQuery, senderID, recipientID).Scan(&usersAreMatched)
+	if err != nil {
+		return models.Message{}, err
+	}
+	if !usersAreMatched {
+		return models.Message{}, ChatErrors.UsersNotMatched
+	}
 	userOneID := senderID
 	userTwoID := recipientID
 	if userOneID > userTwoID {

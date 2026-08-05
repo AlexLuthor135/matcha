@@ -21,6 +21,8 @@ type Repository interface {
 	UpdateAvatarURL(ctx context.Context, userID uint, avatarURL string) (string, error)
 	CreatePhotos(ctx context.Context, userID uint, photoURLs []string, maxAllowed int) ([]models.Photo, error)
 	DeletePhoto(ctx context.Context, userID uint, photoID uint) (string, error)
+	SaveProfileDecision(ctx context.Context, userID uint, targetUserID uint, decision models.ProfileDecisionValue) (models.ProfileDecision, bool, error)
+	ListMatches(ctx context.Context, userID uint) ([]models.Match, error)
 }
 
 type PostgresRepository struct {

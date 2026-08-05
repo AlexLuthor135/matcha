@@ -33,6 +33,10 @@ var UserErrors = struct {
 	PhotoTypeUnsupported     error
 	PhotoNotFound            error
 	InvalidPhotoID           error
+	InvalidTargetUserID      error
+	CannotDecideOwnProfile   error
+	InvalidProfileDecision   error
+	TargetUserNotFound       error
 }{
 	UserNotFound:             errors.New("user not found"),
 	LoginFieldsMissing:       errors.New("email and password are required"),
@@ -64,4 +68,8 @@ var UserErrors = struct {
 	PhotoTypeUnsupported:     errors.New("photo type is unsupported"),
 	PhotoNotFound:            errors.New("photo not found"),
 	InvalidPhotoID:           errors.New("invalid photo ID"),
+	InvalidTargetUserID:      errors.New("invalid target user id"),
+	CannotDecideOwnProfile:   errors.New("cannot like or dislike your own profile"),
+	InvalidProfileDecision:   errors.New("decision must be like or dislike"),
+	TargetUserNotFound:       errors.New("target user not found"),
 }

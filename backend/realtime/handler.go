@@ -137,7 +137,8 @@ func (h *WebsocketHandler) handleChatMessage(ctx context.Context, client *Client
 			errors.Is(err, chat.ChatErrors.MessageBlank),
 			errors.Is(err, chat.ChatErrors.MessageTooLong),
 			errors.Is(err, chat.ChatErrors.SenderNotFound),
-			errors.Is(err, chat.ChatErrors.RecipientNotFound):
+			errors.Is(err, chat.ChatErrors.RecipientNotFound),
+			errors.Is(err, chat.ChatErrors.UsersNotMatched):
 			h.sendError(client, err.Error())
 		default:
 			log.Printf("Save message from user %d to user %d: %v", client.userID, event.RecipientID, err)

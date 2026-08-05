@@ -70,6 +70,20 @@ func TestPostgresRepositoryIntegration(t *testing.T) {
 
 	repository := NewPostgresRepository(db)
 
+	_, err = repository.CreateMessage(ctx, senderID, recipientID, "message without match")
+	if !errors.Is(err, ChatErrors.UsersNotMatched) {
+		t.Fatalf("CreateMessage() without match error = %v, want %v", err, ChatErrors.UsersNotMatched)
+	}
+
+	insertIntegrationProfileDecision(t, ctx, db, senderID, recipientID, "like")
+
+	_, err = repository.CreateMessage(ctx, senderID, recipientID, "message with one like")
+	if !errors.Is(err, ChatErrors.UsersNotMatched) {
+		t.Fatalf("CreateMessage() with one like error = %v, want %v", err, ChatErrors.UsersNotMatched)
+	}
+
+	insertIntegrationProfileDecision(t, ctx, db, recipientID, senderID, "like")
+
 	firstMessage, err := repository.CreateMessage(ctx, senderID, recipientID, "first message")
 	if err != nil {
 		t.Fatalf("CreateMessage() first message: %v", err)
@@ -213,4 +227,27 @@ func insertIntegrationUser(t *testing.T, ctx context.Context, db *sql.DB, name s
 		t.Fatalf("insert integration user %q: %v", name, err)
 	}
 	return userID
+}
+
+func insertIntegrationProfileDecision(
+	t *testing.T,
+	ctx context.Context,
+	db *sql.DB,
+	userID uint,
+	targetUserID uint,
+	decision string,
+) {
+	t.Helper()
+	const query = `
+		INSERT INTO profile_decisions (
+			user_id,
+			target_user_id,
+			decision
+		)
+		VALUES ($1, $2, $3)
+	`
+
+	if _, err := db.ExecContext(ctx, query, userID, targetUserID, decision); err != nil {
+		t.Fatalf("insert profile decision %d -> %d: %v", userID, targetUserID, err)
+	}
 }

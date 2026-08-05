@@ -1,6 +1,7 @@
 package user
 
 import (
+	"backend/models"
 	"context"
 	"database/sql"
 	"errors"
@@ -16,7 +17,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func TestPostgresPhotoRepositoryIntegration(t *testing.T) {
+func TestPostgresUserRepositoryIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping PostgreSQL integration test in short mode")
 	}
@@ -138,6 +139,149 @@ func TestPostgresPhotoRepositoryIntegration(t *testing.T) {
 	if got := countUserIntegrationPhotos(t, ctx, db, rollbackUserID); got != 0 {
 		t.Fatalf("photo count after rolled-back insert = %d, want 0", got)
 	}
+
+	decisionUserID := insertUserIntegrationUser(t, ctx, db, "decision-user", "decision-user@example.invalid")
+	decisionTargetID := insertUserIntegrationUser(t, ctx, db, "decision-target", "decision-target@example.invalid")
+	if _, err := db.ExecContext(
+		ctx,
+		`UPDATE users SET gender = 'Male', preferences = 'Female' WHERE id = $1`,
+		decisionUserID,
+	); err != nil {
+		t.Fatalf("prepare decision user: %v", err)
+	}
+	if _, err := db.ExecContext(
+		ctx,
+		`UPDATE users SET is_completed = true, gender = 'Female', preferences = 'Male', bio = 'Test profile' WHERE id = $1`,
+		decisionTargetID,
+	); err != nil {
+		t.Fatalf("prepare decision target: %v", err)
+	}
+
+	feedBeforeDecision, err := repository.GetProfileFeed(ctx, decisionUserID, 20)
+	if err != nil {
+		t.Fatalf("GetProfileFeed() before decision: %v", err)
+	}
+	if !containsUserIntegrationProfile(feedBeforeDecision, decisionTargetID) {
+		t.Fatalf("GetProfileFeed() before decision does not contain target user %d", decisionTargetID)
+	}
+
+	dislike, isMatch, err := repository.SaveProfileDecision(
+		ctx,
+		decisionUserID,
+		decisionTargetID,
+		models.ProfileDecisionDislike,
+	)
+	if err != nil {
+		t.Fatalf("SaveProfileDecision() dislike: %v", err)
+	}
+	if isMatch {
+		t.Fatal("SaveProfileDecision() dislike isMatch = true, want false")
+	}
+	if dislike.ID == 0 || dislike.Decision != models.ProfileDecisionDislike {
+		t.Fatalf("SaveProfileDecision() dislike = %+v", dislike)
+	}
+	feedAfterDecision, err := repository.GetProfileFeed(ctx, decisionUserID, 20)
+	if err != nil {
+		t.Fatalf("GetProfileFeed() after decision: %v", err)
+	}
+	if containsUserIntegrationProfile(feedAfterDecision, decisionTargetID) {
+		t.Fatalf("GetProfileFeed() after decision still contains target user %d", decisionTargetID)
+	}
+
+	like, isMatch, err := repository.SaveProfileDecision(
+		ctx,
+		decisionUserID,
+		decisionTargetID,
+		models.ProfileDecisionLike,
+	)
+	if err != nil {
+		t.Fatalf("SaveProfileDecision() update to like: %v", err)
+	}
+	if isMatch {
+		t.Fatal("SaveProfileDecision() one-sided like isMatch = true, want false")
+	}
+	if like.ID != dislike.ID {
+		t.Fatalf("updated decision ID = %d, want original %d", like.ID, dislike.ID)
+	}
+	if like.Decision != models.ProfileDecisionLike {
+		t.Fatalf("updated decision = %q, want %q", like.Decision, models.ProfileDecisionLike)
+	}
+	if got := countUserIntegrationDecisions(t, ctx, db, decisionUserID, decisionTargetID); got != 1 {
+		t.Fatalf("decision row count after upsert = %d, want 1", got)
+	}
+	oneSidedMatches, err := repository.ListMatches(ctx, decisionUserID)
+	if err != nil {
+		t.Fatalf("ListMatches() after one-sided like: %v", err)
+	}
+	if _, exists := findUserIntegrationMatch(oneSidedMatches, decisionTargetID); exists {
+		t.Fatalf("ListMatches() after one-sided like contains user %d", decisionTargetID)
+	}
+
+	reverseLike, isMatch, err := repository.SaveProfileDecision(
+		ctx,
+		decisionTargetID,
+		decisionUserID,
+		models.ProfileDecisionLike,
+	)
+	if err != nil {
+		t.Fatalf("SaveProfileDecision() reverse like: %v", err)
+	}
+	if !isMatch {
+		t.Fatal("SaveProfileDecision() reverse like isMatch = false, want true")
+	}
+	if reverseLike.Decision != models.ProfileDecisionLike {
+		t.Fatalf("reverse decision = %q, want %q", reverseLike.Decision, models.ProfileDecisionLike)
+	}
+
+	userMatches, err := repository.ListMatches(ctx, decisionUserID)
+	if err != nil {
+		t.Fatalf("ListMatches() for first matched user: %v", err)
+	}
+	targetMatch, exists := findUserIntegrationMatch(userMatches, decisionTargetID)
+	if !exists {
+		t.Fatalf("ListMatches() does not contain matched user %d", decisionTargetID)
+	}
+	if targetMatch.UserName != "decision-target" {
+		t.Fatalf("matched username = %q, want %q", targetMatch.UserName, "decision-target")
+	}
+
+	targetMatches, err := repository.ListMatches(ctx, decisionTargetID)
+	if err != nil {
+		t.Fatalf("ListMatches() for second matched user: %v", err)
+	}
+	if _, exists := findUserIntegrationMatch(targetMatches, decisionUserID); !exists {
+		t.Fatalf("ListMatches() does not contain reverse matched user %d", decisionUserID)
+	}
+
+	_, isMatch, err = repository.SaveProfileDecision(
+		ctx,
+		decisionTargetID,
+		decisionUserID,
+		models.ProfileDecisionDislike,
+	)
+	if err != nil {
+		t.Fatalf("SaveProfileDecision() reverse dislike: %v", err)
+	}
+	if isMatch {
+		t.Fatal("SaveProfileDecision() reverse dislike isMatch = true, want false")
+	}
+	userMatches, err = repository.ListMatches(ctx, decisionUserID)
+	if err != nil {
+		t.Fatalf("ListMatches() after reverse dislike: %v", err)
+	}
+	if _, exists := findUserIntegrationMatch(userMatches, decisionTargetID); exists {
+		t.Fatalf("ListMatches() after reverse dislike still contains user %d", decisionTargetID)
+	}
+
+	_, _, err = repository.SaveProfileDecision(
+		ctx,
+		decisionUserID,
+		decisionTargetID+1_000_000,
+		models.ProfileDecisionLike,
+	)
+	if !errors.Is(err, UserErrors.TargetUserNotFound) {
+		t.Fatalf("missing target SaveProfileDecision() error = %v, want %v", err, UserErrors.TargetUserNotFound)
+	}
 }
 
 func userIntegrationDatabaseDSN() (string, bool) {
@@ -222,4 +366,44 @@ func countUserIntegrationPhotos(t *testing.T, ctx context.Context, db *sql.DB, u
 		t.Fatalf("count photos for user %d: %v", userID, err)
 	}
 	return count
+}
+
+func countUserIntegrationDecisions(
+	t *testing.T,
+	ctx context.Context,
+	db *sql.DB,
+	userID uint,
+	targetUserID uint,
+) int {
+	t.Helper()
+	const query = `
+		SELECT COUNT(*)
+		FROM profile_decisions
+		WHERE user_id = $1
+		  AND target_user_id = $2
+	`
+
+	var count int
+	if err := db.QueryRowContext(ctx, query, userID, targetUserID).Scan(&count); err != nil {
+		t.Fatalf("count profile decisions %d -> %d: %v", userID, targetUserID, err)
+	}
+	return count
+}
+
+func containsUserIntegrationProfile(profiles []models.User, userID uint) bool {
+	for _, profile := range profiles {
+		if profile.ID == userID {
+			return true
+		}
+	}
+	return false
+}
+
+func findUserIntegrationMatch(matches []models.Match, userID uint) (models.Match, bool) {
+	for _, match := range matches {
+		if match.ID == userID {
+			return match, true
+		}
+	}
+	return models.Match{}, false
 }

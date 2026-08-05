@@ -10,6 +10,7 @@ var ChatErrors = struct {
 	MessageTooLong       error
 	MessageNotFound      error
 	ConversationNotFound error
+	UsersNotMatched      error
 }{
 	SenderNotFound:       errors.New("sender not found"),
 	RecipientNotFound:    errors.New("recipient not found"),
@@ -18,4 +19,5 @@ var ChatErrors = struct {
 	MessageTooLong:       errors.New("message is too long"),
 	MessageNotFound:      errors.New("message not found"),
 	ConversationNotFound: errors.New("conversation not found"),
+	UsersNotMatched:      errors.New("users are not matched"),
 }

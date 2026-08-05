@@ -43,6 +43,7 @@ func main() {
 	privateMux.HandleFunc("GET /verify_login", userModule.Handler.VerifyUser)
 	privateMux.HandleFunc("GET /profile", userModule.Handler.GetProfile)
 	privateMux.HandleFunc("GET /profiles/feed", userModule.Handler.GetProfileFeed)
+	privateMux.HandleFunc("GET /matches", userModule.Handler.ListMatches)
 	privateMux.HandleFunc("GET /ws", websocketHandler.Connect)
 	privateMux.HandleFunc("GET /conversations", chatModule.Handler.ListConversations)
 	privateMux.HandleFunc("GET /conversations/{conversationID}/messages", chatModule.Handler.ListConversationMessages)
@@ -59,6 +60,8 @@ func main() {
 	privateMux.HandleFunc("PATCH /user/password", userModule.Handler.UpdatePassword)
 	privateMux.HandleFunc("PATCH /messages/{messageID}/read", chatModule.Handler.MarkMessageRead)
 	// privateMux.HandleFunc("PATCH /notifications/:notificationID/read", markNotificationRead)
+
+	privateMux.HandleFunc("PUT /profiles/{targetUserID}/decision", userModule.Handler.SaveProfileDecision)
 
 	privateMux.HandleFunc("DELETE /photos/{photoID}", userModule.Handler.DeletePhoto)
 

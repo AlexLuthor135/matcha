@@ -38,6 +38,7 @@ func (repo *PostgresRepository) GetProfileFeed(ctx context.Context, userID uint,
 			AND is_completed = true
 			AND ($2 = '' OR gender = $2)
 			AND ($3 = '' OR preferences = $3)
+			AND NOT EXISTS (SELECT 1 FROM profile_decisions WHERE profile_decisions.user_id = $1 AND profile_decisions.target_user_id = users.id)
 		ORDER BY random()
 		LIMIT $4
 	`
