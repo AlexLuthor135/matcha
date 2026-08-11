@@ -84,7 +84,7 @@ export default function NotificationDropdown() {
     }
 
     return subscribe("notification", (payload) => {
-      const notification = normalizeNotification(payload);
+      const notification = normalizeNotification(payload.notification);
       if (!notification) {
         return;
       }

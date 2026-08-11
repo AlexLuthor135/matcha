@@ -17,3 +17,21 @@ type ProfileDecision struct {
 	TargetUserID uint                 `json:"target_user_id"`
 	Decision     ProfileDecisionValue `json:"decision"`
 }
+
+type ProfileLiker struct {
+	ID        uint      `json:"id"`
+	UserName  string    `json:"user_name"`
+	FirstName string    `json:"first_name"`
+	LastName  string    `json:"last_name"`
+	Avatar    string    `json:"avatar"`
+	LikedAt   time.Time `json:"liked_at"`
+}
+
+type ProfileRelationship struct {
+	LikedByMe bool
+	LikedMe   bool
+}
+
+func (relationship ProfileRelationship) IsConnected() bool {
+	return relationship.LikedByMe && relationship.LikedMe
+}

@@ -10,19 +10,23 @@ Implemented backend areas:
 
 - registration, login, token refresh, logout, and authenticated-route verification;
 - profile completion, profile/account updates, and password updates;
-- profile and profile-feed reads;
+- own-profile, public-profile, and profile-feed reads;
+- persisted profile likes/dislikes and exclusion of decided profiles from the feed;
+- mutual-match listing for starting chats without entering user IDs manually;
 - avatar upload and replacement;
-- profile-photo upload and deletion with a five-photo limit;
+- profile-photo upload and deletion with four gallery photos plus one required profile picture;
 - conversations, stored chat messages, read receipts, and WebSocket delivery;
+- persisted match notifications, notification read receipts, and realtime notification delivery;
 - PostgreSQL migrations through Goose;
-- Handler → Service → Repository separation for `user` and `chat`;
+- Handler → Service → Repository separation for `user`, `chat`, and `notification`;
 - local image storage behind an `ImageStorage` interface;
-- unit tests for image services and local storage;
-- PostgreSQL integration tests for chat and profile-photo repositories.
+- unit tests for user, chat, and notification services and handlers;
+- PostgreSQL integration tests for user, chat, and notification repositories.
 
 Not implemented yet:
 
-- notification handlers/services/repositories. The table exists, but its routes in `backend/main.go` remain commented out;
+- profile-view history and profile-view notifications;
+- the remaining Matcha features such as location-based discovery, blocking, and reporting;
 - production-grade object storage and background cleanup of orphaned files;
 - a complete automated test suite for every user/account endpoint.
 
@@ -81,7 +85,7 @@ Only `PostgresRepository` stores `*sql.DB`. `UserHandler` does not have a databa
 
 ### Models
 
-`backend/models` contains shared data structures such as `User`, `Photo`, `Conversation`, and `Message`. Models do not own SQL queries, HTTP behavior, or package-specific errors.
+`backend/models` contains shared data structures such as `User`, `Photo`, `Conversation`, `Message`, and `Notification`. Models do not own SQL queries, HTTP behavior, or package-specific errors.
 
 ### Package layout
 
@@ -101,6 +105,11 @@ backend/
 │   └── schema.sql             reference schema entry point
 ├── middleware/                authentication middleware
 ├── models/                    shared data structures
+├── notification/
+│   ├── handler*.go
+│   ├── service*.go
+│   ├── repository*.go
+│   └── *_test.go
 ├── realtime/                  WebSocket clients and hub
 ├── user/
 │   ├── handler*.go
@@ -113,6 +122,8 @@ backend/
 ├── entrypoint.sh
 └── main.go
 ```
+
+The repository root also contains `go.work`, which tells Go tooling and `gopls` that `backend/` is the Go module when the whole `matcha` directory is opened in an IDE.
 
 ## Running the project
 
@@ -224,6 +235,29 @@ Once a migration has been applied to a shared or important database, do not edit
 
 `backend/database/schema/` is a readable per-table reference for a fresh schema. Runtime startup uses Goose migrations, so every real schema change must be represented by a new migration. Keep the reference schema synchronized if it remains in the project.
 
+## Seed profiles
+
+The isolated seed command creates at least 500 deterministic completed profiles, generated PNG images, photos, likes, dislikes, mutual matches, and different fame ratings. It uses `database/sql` and one transaction; it is not an HTTP endpoint and is never run automatically.
+
+Run it inside the backend container with a local development-only password:
+
+```sh
+docker compose exec \
+  -e SEED_PASSWORD='Choose-A-Local-Password9!' \
+  web go run ./cmd/seed
+```
+
+`SEED_PROFILE_COUNT` defaults to `500` and accepts values from `500` through `5000`:
+
+```sh
+docker compose exec \
+  -e SEED_PASSWORD='Choose-A-Local-Password9!' \
+  -e SEED_PROFILE_COUNT=750 \
+  web go run ./cmd/seed
+```
+
+Seed accounts use usernames `seed_0001`, `seed_0002`, and so on, with emails under the reserved `example.invalid` domain. Re-running the command updates those accounts instead of duplicating them. Generated images are stored under `backend/uploads/seed/` and are ignored by Git.
+
 ## Current tables
 
 ### `users`
@@ -270,7 +304,33 @@ Stores persisted messages, participants, timestamps, and nullable `read_at`.
 
 ### `notifications`
 
-The schema exists, but the application layer is intentionally not implemented yet.
+Stores persistent notifications for a recipient in `user_id`. `sender_id` identifies the user who caused the event and may become `NULL` if that account is deleted. `read_at = NULL` means the notification is unread.
+
+The current application creates a `match` notification when the second directed `like` completes a mutual match. It stores the row before publishing this WebSocket event:
+
+```json
+{
+  "type": "notification",
+  "notification": {
+    "id": 1,
+    "user_id": 10,
+    "sender_id": 20,
+    "type": "match",
+    "title": "New match",
+    "message": "You have a new match",
+    "data": {
+      "matched_user_id": 20
+    },
+    "read_at": null
+  }
+}
+```
+
+The partial unique index on `(user_id, sender_id) WHERE type = 'match'` prevents duplicate stored match notifications for the same pair. Other notification types are not affected by that index.
+
+### `profile_decisions`
+
+Stores one current `like` or `dislike` for an ordered actor/target pair. The unique `(user_id, target_user_id)` constraint lets the backend update an existing decision with an upsert, and the feed excludes profiles for which the current user already has a decision. A mutual match exists when both directed rows contain `like`.
 
 ## Important SQL words and symbols
 
@@ -644,6 +704,8 @@ WebSocket event example:
 
 The server saves it, builds the outgoing event, and sends it to both sender and recipient connections.
 
+Match notifications use the same hub. They are first saved in PostgreSQL and then published to the recipient as a `notification` event. Offline users retrieve the stored rows later through `GET /notifications`.
+
 ## Active HTTP routes
 
 Public routes:
@@ -660,9 +722,12 @@ Authenticated routes are mounted below `/api/accounts`:
 GET    /verify_login
 GET    /profile
 GET    /profiles/feed
+GET    /profiles/{targetUserID}
+GET    /matches
 GET    /ws
 GET    /conversations
 GET    /conversations/{conversationID}/messages
+GET    /notifications
 
 POST   /logout/
 POST   /profile/complete
@@ -673,6 +738,9 @@ PATCH  /profile
 PATCH  /user
 PATCH  /user/password
 PATCH  /messages/{messageID}/read
+PATCH  /notifications/{notificationID}/read
+
+PUT    /profiles/{targetUserID}/decision
 
 DELETE /photos/{photoID}
 ```
@@ -687,7 +755,7 @@ Go `http.ServeMux` variables use `{photoID}`, not `:photoID`.
 
 ## Error handling
 
-Package errors live in `user/errors.go` and `chat/errors.go`. Services and repositories return these stable errors; handlers map them to HTTP responses.
+Package errors live in `user/errors.go`, `chat/errors.go`, and `notification/errors.go`. Services and repositories return these stable errors; handlers map them to HTTP responses.
 
 Typical mapping:
 
@@ -732,6 +800,7 @@ The repository tests accept either package-specific DSNs:
 ```text
 USER_TEST_DATABASE_DSN
 CHAT_TEST_DATABASE_DSN
+NOTIFICATION_TEST_DATABASE_DSN
 ```
 
 or the normal `SQL_HOST`, `SQL_PORT`, `SQL_USER`, `SQL_PASSWORD`, and `SQL_DATABASE` variables.
@@ -744,10 +813,10 @@ With Docker running, the simplest command is:
 docker compose exec web go test ./...
 ```
 
-To run only photo repository integration tests:
+To run only user repository integration tests (photos and profile decisions):
 
 ```sh
-docker compose exec web go test ./user -run TestPostgresPhotoRepositoryIntegration -v
+docker compose exec web go test ./user -run TestPostgresUserRepositoryIntegration -v
 ```
 
 ### Frontend
@@ -776,6 +845,8 @@ After automated checks pass, verify behavior through the running application:
 - registration succeeds and duplicate username/email returns `409`;
 - login returns the same `401` message for unknown email and wrong password;
 - profile completion and partial updates round-trip interests correctly;
+- a completed public profile can be read without exposing `email`, `password`, or `is_completed`;
+- an incomplete public profile returns `404`;
 - an empty photo list is JSON `[]`, not `null`;
 - invalid image bytes are rejected even if the filename looks valid;
 - no avatar/photo exceeds 5 MiB;
@@ -783,7 +854,11 @@ After automated checks pass, verify behavior through the running application:
 - one user cannot delete another user's photo;
 - only conversation participants can list its messages;
 - only the recipient can mark a message as read;
-- WebSocket messages are stored before realtime delivery.
+- WebSocket messages are stored before realtime delivery;
+- a mutual like creates one stored match notification for the other user;
+- the notification WebSocket event contains the saved row under `notification`;
+- repeating the same mutual like does not create another stored match notification;
+- only the notification owner can mark it as read.
 
 Useful PostgreSQL inspection queries:
 
@@ -803,6 +878,10 @@ ORDER BY id;
 SELECT id, conversation_id, sender_id, recipient_id, read_at
 FROM chat_messages
 ORDER BY id;
+
+SELECT id, user_id, sender_id, type, read_at
+FROM notifications
+ORDER BY user_id, created_at DESC, id DESC;
 ```
 
 ## Troubleshooting

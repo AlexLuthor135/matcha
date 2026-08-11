@@ -1,11 +1,37 @@
 package user
 
+import (
+	"backend/models"
+	"context"
+)
+
 type UserHandler struct {
-	service *Service
+	service  *Service
+	notifier UserNotifier
+	presence UserPresence
+}
+
+type UserPresence interface {
+	IsUserOnline(ctx context.Context, userID uint) bool
+}
+
+type UserNotifier interface {
+	NotifyMatch(ctx context.Context, recipientID uint, matchedUserID uint) (models.Notification, error)
+	NotifyProfileView(ctx context.Context, recipientID uint, viewerID uint) (models.Notification, error)
+	NotifyLike(ctx context.Context, recipientID uint, likerID uint) (models.Notification, error)
+	NotifyUnlike(ctx context.Context, recipientID uint, unlikerID uint) (models.Notification, error)
 }
 
 func NewUserHandler(service *Service) *UserHandler {
 	return &UserHandler{
 		service: service,
 	}
+}
+
+func (h *UserHandler) SetUserNotifier(notifier UserNotifier) {
+	h.notifier = notifier
+}
+
+func (h *UserHandler) SetUserPresence(presence UserPresence) {
+	h.presence = presence
 }

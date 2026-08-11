@@ -17,3 +17,4 @@ CREATE TABLE IF NOT EXISTS notifications (
 
 CREATE INDEX IF NOT EXISTS notifications_user_created_idx ON notifications (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS notifications_user_unread_idx ON notifications (user_id) WHERE read_at is NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS notifications_match_pair_unique_idx ON notifications (user_id, sender_id) WHERE type = 'match';

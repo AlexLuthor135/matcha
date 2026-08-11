@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"strings"
+	"time"
 )
 
 type UpdateProfileInput struct {
@@ -10,43 +11,50 @@ type UpdateProfileInput struct {
 	Preferences *string
 	Bio         *string
 	Interests   *[]string
+	BirthDate   *time.Time
+	Location    *LocationInput
 }
 
-func (input UpdateProfileInput) Normalize() {
+func (input *UpdateProfileInput) Normalize() error {
 	if input.Gender != nil {
 		*input.Gender = strings.TrimSpace(*input.Gender)
 	}
 	if input.Preferences != nil {
-		*input.Preferences = strings.TrimSpace(*input.Preferences)
+		*input.Preferences = normalizeSexualPreference(*input.Preferences)
 	}
 	if input.Bio != nil {
 		*input.Bio = strings.TrimSpace(*input.Bio)
 	}
 	if input.Interests != nil {
-		normalizedInterests := make([]string, 0, len(*input.Interests))
-		for _, interest := range *input.Interests {
-			interest = strings.TrimSpace(interest)
-			if interest != "" {
-				normalizedInterests = append(normalizedInterests, interest)
-			}
+		normalizedInterests, err := normalizeInterests(*input.Interests)
+		if err != nil {
+			return err
 		}
 		*input.Interests = normalizedInterests
 	}
+	return nil
 }
 
 func (input UpdateProfileInput) HasNoFields() bool {
-	return input.Gender == nil && input.Preferences == nil && input.Bio == nil && input.Interests == nil
+	return input.Gender == nil &&
+		input.Preferences == nil &&
+		input.Bio == nil &&
+		input.Interests == nil &&
+		input.BirthDate == nil &&
+		input.Location == nil
 }
 
 func (s *Service) UpdateProfile(ctx context.Context, userID uint, input UpdateProfileInput) error {
 	if input.HasNoFields() {
 		return UserErrors.NoProfileFields
 	}
-	input.Normalize()
-	if input.Gender != nil && !isValidGenderPreferences(*input.Gender) {
+	if err := input.Normalize(); err != nil {
+		return err
+	}
+	if input.Gender != nil && !isValidGender(*input.Gender) {
 		return UserErrors.InvalidGenderPreference
 	}
-	if input.Preferences != nil && !isValidGenderPreferences(*input.Preferences) {
+	if input.Preferences != nil && !isValidSexualPreference(*input.Preferences) {
 		return UserErrors.InvalidGenderPreference
 	}
 	if input.Bio != nil && *input.Bio == "" {
@@ -55,5 +63,15 @@ func (s *Service) UpdateProfile(ctx context.Context, userID uint, input UpdatePr
 	if input.Interests != nil && len(*input.Interests) == 0 {
 		return UserErrors.ProfileInterestsMissing
 	}
-	return s.repository.UpdateProfile(ctx, userID, input.Gender, input.Preferences, input.Bio, input.Interests)
+	if input.BirthDate != nil {
+		if !isValidAge(*input.BirthDate) {
+			return UserErrors.UserUnderage
+		}
+	}
+	if input.Location != nil {
+		if err := input.Location.Prepare(); err != nil {
+			return err
+		}
+	}
+	return s.repository.UpdateProfile(ctx, userID, input)
 }

@@ -3,7 +3,9 @@ package user
 import (
 	"backend/models"
 	"context"
+	"fmt"
 	"strings"
+	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -36,10 +38,23 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (models.Use
 	if input.HasMissingFields() {
 		return models.User{}, UserErrors.RegistrationFieldMissing
 	}
+	if !isValidEmail(input.Email) {
+		return models.User{}, UserErrors.InvalidEmail
+	}
+	if !isValidUserName(input.UserName) {
+		return models.User{}, UserErrors.InvalidUserName
+	}
 	if !isValidPassword(input.Password) {
 		return models.User{}, UserErrors.InvalidPassword
 	}
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return models.User{}, err
+	}
+	if s.emailSender == nil {
+		return models.User{}, UserErrors.EmailDeliveryFailed
+	}
+	rawToken, tokenHash, err := generateAccountToken()
 	if err != nil {
 		return models.User{}, err
 	}
@@ -50,5 +65,17 @@ func (s *Service) Register(ctx context.Context, input RegisterInput) (models.Use
 		Email:     input.Email,
 		Password:  string(hashedPassword),
 	}
-	return s.repository.CreateUser(ctx, newUser)
+	token := models.AccountToken{
+		Hash:      tokenHash,
+		Purpose:   models.AccountTokenPurposeEmailVerification,
+		ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+	}
+	createdUser, err := s.repository.CreateUser(ctx, newUser, token)
+	if err != nil {
+		return models.User{}, err
+	}
+	if err := s.emailSender.SendVerificationEmail(ctx, createdUser.Email, rawToken); err != nil {
+		return models.User{}, fmt.Errorf("%w: %v", UserErrors.EmailDeliveryFailed, err)
+	}
+	return createdUser, nil
 }

@@ -4,12 +4,11 @@ import (
 	"backend/models"
 	"context"
 	"log"
-	"net/http"
 )
 
 const (
 	maxPhotoFileSize = 5 << 20
-	maxProfilePhotos = 5
+	maxProfilePhotos = 4
 )
 
 func (s *Service) UploadPhotos(ctx context.Context, userID uint, filesData [][]byte) ([]models.Photo, error) {
@@ -27,8 +26,7 @@ func (s *Service) UploadPhotos(ctx context.Context, userID uint, filesData [][]b
 		if len(fileData) > maxPhotoFileSize {
 			return nil, UserErrors.PhotoTooLarge
 		}
-		contentType := http.DetectContentType(fileData)
-		extension, allowed := imageExtension(contentType)
+		extension, allowed := validatedImageExtension(fileData)
 		if !allowed {
 			return nil, UserErrors.PhotoTypeUnsupported
 		}

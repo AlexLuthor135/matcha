@@ -1,6 +1,7 @@
 package user
 
 import (
+	"backend/api"
 	"backend/middleware"
 	"encoding/json"
 	"errors"
@@ -16,7 +17,9 @@ type UpdateUserRequest struct {
 }
 
 type UpdateUserResponse struct {
-	Message string `json:"message"`
+	Message              string `json:"message"`
+	VerificationRequired bool   `json:"verification_required"`
+	PendingEmail         string `json:"pending_email,omitempty"`
 }
 
 func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -26,11 +29,10 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req UpdateUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if !api.DecodeJSONRequest(w, r, &req) {
 		return
 	}
-	err := h.service.UpdateUser(
+	result, err := h.service.UpdateUser(
 		r.Context(),
 		userID,
 		UserUpdateInput{
@@ -43,7 +45,12 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, UserErrors.NoUserFields):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
-	case errors.Is(err, UserErrors.UserNameBlank), errors.Is(err, UserErrors.FirstNameBlank), errors.Is(err, UserErrors.LastNameBlank), errors.Is(err, UserErrors.EmailBlank):
+	case errors.Is(err, UserErrors.UserNameBlank),
+		errors.Is(err, UserErrors.InvalidUserName),
+		errors.Is(err, UserErrors.FirstNameBlank),
+		errors.Is(err, UserErrors.LastNameBlank),
+		errors.Is(err, UserErrors.EmailBlank),
+		errors.Is(err, UserErrors.InvalidEmail):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case errors.Is(err, UserErrors.UserNotFound):
@@ -51,6 +58,10 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	case errors.Is(err, UserErrors.UserAlreadyExists):
 		http.Error(w, "Username or email already exists", http.StatusConflict)
+		return
+	case errors.Is(err, UserErrors.EmailDeliveryFailed):
+		log.Printf("Send updated-email verification for user %d: %v", userID, err)
+		http.Error(w, UserErrors.EmailDeliveryFailed.Error(), http.StatusBadGateway)
 		return
 	case err != nil:
 		log.Printf("Update user %d: %v", userID, err)
@@ -60,7 +71,12 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	response := UpdateUserResponse{
-		Message: "User updated successfully",
+		Message:              "User updated successfully",
+		VerificationRequired: result.EmailChanged,
+		PendingEmail:         result.PendingEmail,
+	}
+	if result.EmailChanged {
+		response.Message = "User updated; verify the new email address"
 	}
 	if err := json.NewEncoder(w).Encode(response); err != nil {
 		log.Printf("Encode update for user %d: %v", userID, err)

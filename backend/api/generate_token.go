@@ -15,7 +15,7 @@ type LoginResponse struct {
 	IsCompleted bool   `json:"is_completed"`
 }
 
-func GenerateTokens(w http.ResponseWriter, user models.User) bool {
+func GenerateTokens(w http.ResponseWriter, user models.User, sessionID string, refreshExpiresAt time.Time) bool {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
 		http.Error(w, "Authentication is not configured", http.StatusInternalServerError)
@@ -32,9 +32,10 @@ func GenerateTokens(w http.ResponseWriter, user models.User) bool {
 		return true
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"user_id": user.ID,
-		"type":    "refresh",
-		"exp":     time.Now().Add(time.Hour * 24 * 7).Unix(),
+		"user_id":    user.ID,
+		"session_id": sessionID,
+		"type":       "refresh",
+		"exp":        refreshExpiresAt.Unix(),
 	})
 	refreshTokenString, err := refreshToken.SignedString([]byte(secret))
 	if err != nil {
@@ -58,7 +59,7 @@ func GenerateTokens(w http.ResponseWriter, user models.User) bool {
 		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 		Path:     "/",
-		Expires:  time.Now().Add(time.Hour * 24 * 7),
+		Expires:  refreshExpiresAt,
 	})
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -72,4 +73,21 @@ func GenerateTokens(w http.ResponseWriter, user models.User) bool {
 	}
 	return false
 
+}
+
+func ClearAuthCookies(w http.ResponseWriter) {
+	for _, name := range []string{
+		"access_token", "refresh_token",
+	} {
+		http.SetCookie(w, &http.Cookie{
+			Name:     name,
+			Value:    "",
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteLaxMode,
+			Path:     "/",
+			Expires:  time.Unix(0, 0),
+			MaxAge:   -1,
+		})
+	}
 }

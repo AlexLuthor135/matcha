@@ -5,4 +5,5 @@ backend/backend
 frontend/dist/
 backend/uploads/avatars/
 backend/uploads/photos/
+backend/uploads/seed/
 backend/.gocache

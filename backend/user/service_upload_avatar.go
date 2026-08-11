@@ -3,7 +3,6 @@ package user
 import (
 	"context"
 	"log"
-	"net/http"
 )
 
 const maxAvatarFileSize = 5 << 20
@@ -15,8 +14,7 @@ func (s *Service) UploadAvatar(ctx context.Context, userID uint, fileData []byte
 	if len(fileData) > maxAvatarFileSize {
 		return "", UserErrors.AvatarTooLarge
 	}
-	contentType := http.DetectContentType(fileData)
-	extension, allowed := imageExtension(contentType)
+	extension, allowed := validatedImageExtension(fileData)
 	if !allowed {
 		return "", UserErrors.AvatarTypeUnsupported
 	}

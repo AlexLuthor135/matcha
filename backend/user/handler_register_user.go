@@ -1,6 +1,7 @@
 package user
 
 import (
+	"backend/api"
 	"encoding/json"
 	"errors"
 	"log"
@@ -30,8 +31,7 @@ type RegisterUserResponse struct {
 
 func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var req RegisterUserRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if !api.DecodeJSONRequest(w, r, &req) {
 		return
 	}
 	newUser, err := h.service.Register(r.Context(), RegisterInput{
@@ -45,11 +45,18 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, UserErrors.RegistrationFieldMissing):
 		http.Error(w, "All fields are required", http.StatusBadRequest)
 		return
-	case errors.Is(err, UserErrors.InvalidPassword):
-		http.Error(w, "Password must contain at least 8 characters, an uppercase letter, a lowercase letter, a number and a special character", http.StatusBadRequest)
+	case errors.Is(err, UserErrors.InvalidUserName):
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	case errors.Is(err, UserErrors.InvalidPassword) || errors.Is(err, UserErrors.InvalidEmail):
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case errors.Is(err, UserErrors.UserAlreadyExists):
 		http.Error(w, "Username or email already exists", http.StatusConflict)
+		return
+	case errors.Is(err, UserErrors.EmailDeliveryFailed):
+		log.Printf("Send verification email during registration: %v", err)
+		http.Error(w, UserErrors.EmailDeliveryFailed.Error(), http.StatusBadGateway)
 		return
 	case err != nil:
 		log.Printf("Register user: %v", err)

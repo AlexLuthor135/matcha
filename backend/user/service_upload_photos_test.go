@@ -10,7 +10,7 @@ import (
 )
 
 func TestServiceUploadPhotosRejectsInvalidInput(t *testing.T) {
-	validFiles := make([][]byte, maxProfilePhotos+1)
+	validFiles := make([][]byte, 5)
 	for index := range validFiles {
 		validFiles[index] = validPNGData()
 	}

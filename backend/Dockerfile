@@ -1,5 +1,5 @@
 # pull official base image
-FROM golang:1.26-alpine
+FROM golang:1.26.5-alpine
 
 # set work directory
 WORKDIR /backend

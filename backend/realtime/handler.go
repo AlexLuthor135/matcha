@@ -3,6 +3,7 @@ package realtime
 import (
 	"backend/chat"
 	"backend/middleware"
+	"backend/models"
 	"context"
 	"encoding/json"
 	"errors"
@@ -50,13 +51,19 @@ type errorEvent struct {
 type WebsocketHandler struct {
 	hub         *Hub
 	chatService *chat.Service
+	notifier    MessageNotifier
 	upgrader    websocket.Upgrader
 }
 
-func NewWebsocketHandler(hub *Hub, chatService *chat.Service) *WebsocketHandler {
+type MessageNotifier interface {
+	NotifyMessage(ctx context.Context, message models.Message) (models.Notification, error)
+}
+
+func NewWebsocketHandler(hub *Hub, chatService *chat.Service, notifier MessageNotifier) *WebsocketHandler {
 	return &WebsocketHandler{
 		hub:         hub,
 		chatService: chatService,
+		notifier:    notifier,
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
 			WriteBufferSize: 1024,
@@ -163,6 +170,12 @@ func (h *WebsocketHandler) handleChatMessage(ctx context.Context, client *Client
 	}
 	h.hub.SendToUser(message.SenderID, data)
 	h.hub.SendToUser(message.RecipientID, data)
+	if h.notifier != nil {
+		_, notifyErr := h.notifier.NotifyMessage(ctx, message)
+		if notifyErr != nil {
+			log.Printf("Notify user %d about message %d from user %d: %v", message.RecipientID, message.ID, message.SenderID, notifyErr)
+		}
+	}
 }
 
 func (h *WebsocketHandler) handleMessageRead(ctx context.Context, client *Client, event incomingEvent) {

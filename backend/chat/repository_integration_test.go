@@ -152,6 +152,218 @@ func TestPostgresRepositoryIntegration(t *testing.T) {
 	if !secondReceipt.ReadAt.Equal(firstReceipt.ReadAt) {
 		t.Fatalf("second read_at = %s, want original %s", secondReceipt.ReadAt, firstReceipt.ReadAt)
 	}
+
+	if _, err := db.ExecContext(
+		ctx,
+		`UPDATE profile_decisions SET decision = 'dislike', updated_at = now() WHERE user_id = $1 AND target_user_id = $2`,
+		senderID,
+		recipientID,
+	); err != nil {
+		t.Fatalf("prepare unlike for conversation list: %v", err)
+	}
+	for _, userID := range []uint{senderID, recipientID} {
+		conversations, err := repository.ListConversations(ctx, userID)
+		if err != nil {
+			t.Fatalf("ListConversations(%d) after unlike: %v", userID, err)
+		}
+		if len(conversations) != 0 {
+			t.Fatalf("ListConversations(%d) after unlike = %+v, want empty", userID, conversations)
+		}
+		_, err = repository.ListConversationMessages(ctx, userID, firstMessage.ConversationID)
+		if !errors.Is(err, ChatErrors.ConversationNotFound) {
+			t.Fatalf(
+				"ListConversationMessages(%d) after unlike error = %v, want %v",
+				userID,
+				err,
+				ChatErrors.ConversationNotFound,
+			)
+		}
+	}
+	_, err = repository.MarkMessageRead(ctx, recipientID, firstMessage.ID)
+	if !errors.Is(err, ChatErrors.MessageNotFound) {
+		t.Fatalf(
+			"MarkMessageRead() after unlike error = %v, want %v",
+			err,
+			ChatErrors.MessageNotFound,
+		)
+	}
+
+	if _, err := db.ExecContext(
+		ctx,
+		`UPDATE profile_decisions SET decision = 'like', updated_at = now() WHERE user_id = $1 AND target_user_id = $2`,
+		senderID,
+		recipientID,
+	); err != nil {
+		t.Fatalf("restore match for conversation list: %v", err)
+	}
+	for _, userID := range []uint{senderID, recipientID} {
+		conversations, err := repository.ListConversations(ctx, userID)
+		if err != nil {
+			t.Fatalf("ListConversations(%d) after match restore: %v", userID, err)
+		}
+		if len(conversations) != 1 || conversations[0].ID != firstMessage.ConversationID {
+			t.Fatalf(
+				"ListConversations(%d) after match restore = %+v, want conversation %d",
+				userID,
+				conversations,
+				firstMessage.ConversationID,
+			)
+		}
+		restoredMessages, err := repository.ListConversationMessages(ctx, userID, firstMessage.ConversationID)
+		if err != nil {
+			t.Fatalf("ListConversationMessages(%d) after match restore: %v", userID, err)
+		}
+		if len(restoredMessages) != 2 {
+			t.Fatalf(
+				"ListConversationMessages(%d) after match restore returned %d messages, want 2",
+				userID,
+				len(restoredMessages),
+			)
+		}
+	}
+	restoredReadReceipt, err := repository.MarkMessageRead(ctx, recipientID, firstMessage.ID)
+	if err != nil {
+		t.Fatalf("MarkMessageRead() after match restore: %v", err)
+	}
+	if restoredReadReceipt.MessageID != firstMessage.ID {
+		t.Fatalf(
+			"MarkMessageRead() after match restore message ID = %d, want %d",
+			restoredReadReceipt.MessageID,
+			firstMessage.ID,
+		)
+	}
+
+	if _, err := db.ExecContext(
+		ctx,
+		`INSERT INTO user_blocks (blocker_id, blocked_user_id) VALUES ($1, $2)`,
+		senderID,
+		recipientID,
+	); err != nil {
+		t.Fatalf("insert block for conversation list: %v", err)
+	}
+	for _, userID := range []uint{senderID, recipientID} {
+		conversations, err := repository.ListConversations(ctx, userID)
+		if err != nil {
+			t.Fatalf("ListConversations(%d) after block: %v", userID, err)
+		}
+		if len(conversations) != 0 {
+			t.Fatalf("ListConversations(%d) after block = %+v, want empty", userID, conversations)
+		}
+		_, err = repository.ListConversationMessages(ctx, userID, firstMessage.ConversationID)
+		if !errors.Is(err, ChatErrors.ConversationNotFound) {
+			t.Fatalf(
+				"ListConversationMessages(%d) after block error = %v, want %v",
+				userID,
+				err,
+				ChatErrors.ConversationNotFound,
+			)
+		}
+	}
+	_, err = repository.MarkMessageRead(ctx, recipientID, firstMessage.ID)
+	if !errors.Is(err, ChatErrors.MessageNotFound) {
+		t.Fatalf(
+			"MarkMessageRead() after block error = %v, want %v",
+			err,
+			ChatErrors.MessageNotFound,
+		)
+	}
+
+	if _, err := db.ExecContext(
+		ctx,
+		`DELETE FROM user_blocks WHERE blocker_id = $1 AND blocked_user_id = $2`,
+		senderID,
+		recipientID,
+	); err != nil {
+		t.Fatalf("remove block for conversation list: %v", err)
+	}
+	for _, userID := range []uint{senderID, recipientID} {
+		conversations, err := repository.ListConversations(ctx, userID)
+		if err != nil {
+			t.Fatalf("ListConversations(%d) after unblock: %v", userID, err)
+		}
+		if len(conversations) != 1 || conversations[0].ID != firstMessage.ConversationID {
+			t.Fatalf(
+				"ListConversations(%d) after unblock = %+v, want conversation %d",
+				userID,
+				conversations,
+				firstMessage.ConversationID,
+			)
+		}
+		restoredMessages, err := repository.ListConversationMessages(ctx, userID, firstMessage.ConversationID)
+		if err != nil {
+			t.Fatalf("ListConversationMessages(%d) after unblock: %v", userID, err)
+		}
+		if len(restoredMessages) != 2 {
+			t.Fatalf(
+				"ListConversationMessages(%d) after unblock returned %d messages, want 2",
+				userID,
+				len(restoredMessages),
+			)
+		}
+	}
+	restoredReadReceipt, err = repository.MarkMessageRead(ctx, recipientID, firstMessage.ID)
+	if err != nil {
+		t.Fatalf("MarkMessageRead() after unblock: %v", err)
+	}
+	if restoredReadReceipt.MessageID != firstMessage.ID {
+		t.Fatalf(
+			"MarkMessageRead() after unblock message ID = %d, want %d",
+			restoredReadReceipt.MessageID,
+			firstMessage.ID,
+		)
+	}
+
+	if _, err := db.ExecContext(
+		ctx,
+		`INSERT INTO user_blocks (blocker_id, blocked_user_id) VALUES ($1, $2)`,
+		senderID,
+		recipientID,
+	); err != nil {
+		t.Fatalf("insert block for CreateMessage: %v", err)
+	}
+	blockedMessageAttempts := []struct {
+		name        string
+		senderID    uint
+		recipientID uint
+	}{
+		{
+			name:        "blocker sends to blocked user",
+			senderID:    senderID,
+			recipientID: recipientID,
+		},
+		{
+			name:        "blocked user sends to blocker",
+			senderID:    recipientID,
+			recipientID: senderID,
+		},
+	}
+	for _, attempt := range blockedMessageAttempts {
+		_, err := repository.CreateMessage(
+			ctx,
+			attempt.senderID,
+			attempt.recipientID,
+			"message while blocked",
+		)
+		if !errors.Is(err, ChatErrors.UsersNotMatched) {
+			t.Fatalf(
+				"CreateMessage() %s error = %v, want %v",
+				attempt.name,
+				err,
+				ChatErrors.UsersNotMatched,
+			)
+		}
+	}
+	var messageCount int
+	if err := db.QueryRowContext(
+		ctx,
+		`SELECT COUNT(*) FROM chat_messages WHERE conversation_id = $1`,
+		firstMessage.ConversationID,
+	).Scan(&messageCount); err != nil {
+		t.Fatalf("count messages after blocked sends: %v", err)
+	}
+	if messageCount != 2 {
+		t.Fatalf("message count after blocked sends = %d, want 2", messageCount)
+	}
 }
 
 func integrationDatabaseDSN() (string, bool) {

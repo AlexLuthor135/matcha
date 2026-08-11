@@ -8,7 +8,26 @@ import (
 )
 
 func (repo *PostgresRepository) ListConversationMessages(ctx context.Context, userID uint, conversationID uint) ([]models.Message, error) {
-	const accessQuery = `SELECT id FROM conversations WHERE id = $1 AND (user_one_id = $2 OR user_two_id = $2)`
+	const accessQuery = `
+	SELECT c.id
+	FROM conversations AS c
+	WHERE c.id = $1
+	AND (c.user_one_id = $2 OR c.user_two_id = $2)
+	AND EXISTS (
+		SELECT 1 FROM profile_decisions AS first_decision
+		WHERE first_decision.user_id = c.user_one_id
+		AND first_decision.target_user_id = c.user_two_id
+		AND first_decision.decision = 'like')
+	AND EXISTS (
+			SELECT 1 FROM profile_decisions AS second_decision
+			WHERE second_decision.user_id = c.user_two_id
+			AND second_decision.target_user_id = c.user_one_id
+			AND second_decision.decision = 'like')
+	AND NOT EXISTS (
+			SELECT 1 FROM user_blocks AS ub
+			WHERE (ub.blocker_id = c.user_one_id AND ub.blocked_user_id = c.user_two_id)
+			OR (ub.blocker_id = c.user_two_id AND ub.blocked_user_id = c.user_one_id))
+	`
 	var accessibleConversationID uint
 	err := repo.db.QueryRowContext(ctx, accessQuery, conversationID, userID).Scan(&accessibleConversationID)
 	if errors.Is(err, sql.ErrNoRows) {

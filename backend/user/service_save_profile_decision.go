@@ -3,6 +3,7 @@ package user
 import (
 	"backend/models"
 	"context"
+	"strings"
 )
 
 func isValidProfileDecision(decision models.ProfileDecisionValue) bool {
@@ -14,15 +15,22 @@ func isValidProfileDecision(decision models.ProfileDecisionValue) bool {
 	}
 }
 
-func (s *Service) SaveProfileDecision(ctx context.Context, userID uint, targetUserID uint, decision models.ProfileDecisionValue) (models.ProfileDecision, bool, error) {
+func (s *Service) SaveProfileDecision(ctx context.Context, userID uint, targetUserID uint, decision models.ProfileDecisionValue) (SaveProfileDecisionResult, error) {
 	if targetUserID == 0 {
-		return models.ProfileDecision{}, false, UserErrors.InvalidTargetUserID
+		return SaveProfileDecisionResult{}, UserErrors.InvalidTargetUserID
 	}
 	if userID == targetUserID {
-		return models.ProfileDecision{}, false, UserErrors.CannotDecideOwnProfile
+		return SaveProfileDecisionResult{}, UserErrors.CannotDecideOwnProfile
 	}
 	if !isValidProfileDecision(decision) {
-		return models.ProfileDecision{}, false, UserErrors.InvalidProfileDecision
+		return SaveProfileDecisionResult{}, UserErrors.InvalidProfileDecision
+	}
+	avatarURL, err := s.repository.GetAvatarURL(ctx, userID)
+	if err != nil {
+		return SaveProfileDecisionResult{}, err
+	}
+	if strings.TrimSpace(avatarURL) == "" {
+		return SaveProfileDecisionResult{}, UserErrors.ProfilePictureRequired
 	}
 	return s.repository.SaveProfileDecision(ctx, userID, targetUserID, decision)
 }

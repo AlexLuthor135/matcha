@@ -1,8 +1,11 @@
 package user
 
 import (
+	"backend/models"
 	"context"
+	"fmt"
 	"strings"
+	"time"
 )
 
 type UserUpdateInput struct {
@@ -10,6 +13,11 @@ type UserUpdateInput struct {
 	FirstName *string
 	LastName  *string
 	Email     *string
+}
+
+type UpdateUserResult struct {
+	EmailChanged bool
+	PendingEmail string
 }
 
 func (input UserUpdateInput) HasNoFields() bool {
@@ -32,22 +40,58 @@ func (input *UserUpdateInput) Normalize() {
 
 }
 
-func (s *Service) UpdateUser(ctx context.Context, userID uint, input UserUpdateInput) error {
+func (s *Service) UpdateUser(ctx context.Context, userID uint, input UserUpdateInput) (UpdateUserResult, error) {
 	if input.HasNoFields() {
-		return UserErrors.NoUserFields
+		return UpdateUserResult{}, UserErrors.NoUserFields
 	}
 	input.Normalize()
-	if input.UserName != nil && *input.UserName == "" {
-		return UserErrors.UserNameBlank
+	if input.UserName != nil {
+		if *input.UserName == "" {
+			return UpdateUserResult{}, UserErrors.UserNameBlank
+		}
+		if !isValidUserName(*input.UserName) {
+			return UpdateUserResult{}, UserErrors.InvalidUserName
+		}
 	}
 	if input.FirstName != nil && *input.FirstName == "" {
-		return UserErrors.FirstNameBlank
+		return UpdateUserResult{}, UserErrors.FirstNameBlank
 	}
 	if input.LastName != nil && *input.LastName == "" {
-		return UserErrors.LastNameBlank
+		return UpdateUserResult{}, UserErrors.LastNameBlank
 	}
-	if input.Email != nil && *input.Email == "" {
-		return UserErrors.EmailBlank
+	if input.Email != nil {
+		if !isValidEmail(*input.Email) {
+			return UpdateUserResult{}, UserErrors.InvalidEmail
+		}
+		if s.emailSender == nil {
+			return UpdateUserResult{}, UserErrors.EmailDeliveryFailed
+		}
 	}
-	return s.repository.UpdateUser(ctx, userID, input.UserName, input.FirstName, input.LastName, input.Email)
+	var rawToken string
+	var verificationToken *models.AccountToken
+	if input.Email != nil {
+		generatedToken, tokenHash, err := generateAccountToken()
+		if err != nil {
+			return UpdateUserResult{}, err
+		}
+		rawToken = generatedToken
+		token := models.AccountToken{
+			UserID:    userID,
+			Hash:      tokenHash,
+			Purpose:   models.AccountTokenPurposeEmailVerification,
+			ExpiresAt: time.Now().UTC().Add(24 * time.Hour),
+		}
+		verificationToken = &token
+	}
+	result, err := s.repository.UpdateUser(ctx, userID, input, verificationToken)
+	if err != nil {
+		return UpdateUserResult{}, err
+	}
+	if !result.EmailChanged {
+		return result, nil
+	}
+	if err := s.emailSender.SendVerificationEmail(ctx, result.PendingEmail, rawToken); err != nil {
+		return result, fmt.Errorf("%w: %v", UserErrors.EmailDeliveryFailed, err)
+	}
+	return result, nil
 }

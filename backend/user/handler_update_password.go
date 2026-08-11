@@ -1,6 +1,7 @@
 package user
 
 import (
+	"backend/api"
 	"backend/middleware"
 	"encoding/json"
 	"errors"
@@ -24,8 +25,7 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req UpdatePasswordRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if !api.DecodeJSONRequest(w, r, &req) {
 		return
 	}
 	err := h.service.UpdatePassword(r.Context(), userID, req.CurrentPassword, req.NewPassword)
@@ -34,7 +34,7 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case errors.Is(err, UserErrors.InvalidPassword):
-		http.Error(w, "New password must contain at least 8 characters, an uppercase letter, a lowercase letter, a number and a special character", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case errors.Is(err, UserErrors.NewPasswordUnchanged):
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -50,6 +50,7 @@ func (h *UserHandler) UpdatePassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to update password", http.StatusInternalServerError)
 		return
 	}
+	api.ClearAuthCookies(w)
 	response := UpdatePasswordResponse{
 		Message: "Password updated successfully",
 	}

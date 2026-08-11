@@ -9,12 +9,21 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-func (s *Service) Login(ctx context.Context, email string, password string) (models.User, error) {
-	email = strings.ToLower(strings.TrimSpace(email))
-	if email == "" || strings.TrimSpace(password) == "" {
+func (s *Service) Login(ctx context.Context, login string, password string) (models.User, error) {
+	login = strings.TrimSpace(login)
+	if login == "" || strings.TrimSpace(password) == "" {
 		return models.User{}, UserErrors.LoginFieldsMissing
 	}
-	user, err := s.repository.GetUserByEmail(ctx, email)
+	var (
+		user models.User
+		err  error
+	)
+	if strings.Contains(login, "@") {
+		login = strings.ToLower(login)
+		user, err = s.repository.GetUserByEmail(ctx, login)
+	} else {
+		user, err = s.repository.GetUserByUserName(ctx, login)
+	}
 	if errors.Is(err, UserErrors.UserNotFound) {
 		return models.User{}, UserErrors.InvalidCredentials
 	}
@@ -24,6 +33,9 @@ func (s *Service) Login(ctx context.Context, email string, password string) (mod
 	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		return models.User{}, UserErrors.InvalidCredentials
+	}
+	if !user.IsVerified {
+		return models.User{}, UserErrors.EmailNotVerified
 	}
 	return user, nil
 }

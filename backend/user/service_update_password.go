@@ -33,5 +33,5 @@ func (s *Service) UpdatePassword(ctx context.Context, userID uint, currentPasswo
 	if err != nil {
 		return err
 	}
-	return s.repository.UpdatePasswordHash(ctx, userID, string(newPasswordHash))
+	return s.repository.UpdatePasswordHashAndRevokeSessions(ctx, userID, string(newPasswordHash))
 }

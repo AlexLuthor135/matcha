@@ -26,10 +26,21 @@ func (repo *PostgresRepository) CreateMessage(ctx context.Context, senderID uint
 	}
 	const matchQuery = `
 	SELECT
-		EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $1 AND target_user_id = $2 AND decision = 'like')
-		AND
-		EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $2 AND target_user_id = $1 AND decision = 'like')
-`
+		EXISTS (
+			SELECT 1 FROM profile_decisions
+			WHERE user_id = $1
+			AND target_user_id = $2
+			AND decision = 'like')
+		AND EXISTS (
+			SELECT 1 FROM profile_decisions
+			WHERE user_id = $2
+			AND target_user_id = $1
+			AND decision = 'like')
+		AND NOT EXISTS (
+			SELECT 1 FROM user_blocks AS ub
+			WHERE (ub.blocker_id = $1 AND ub.blocked_user_id = $2)
+			OR (ub.blocker_id = $2 AND ub.blocked_user_id = $1))
+	`
 	var usersAreMatched bool
 	err = tx.QueryRowContext(ctx, matchQuery, senderID, recipientID).Scan(&usersAreMatched)
 	if err != nil {

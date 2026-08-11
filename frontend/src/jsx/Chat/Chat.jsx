@@ -15,6 +15,39 @@ function getPeerID(conversation, currentUserID) {
         : conversation.user_one_id;
 }
 
+function normalizeMatch(match) {
+    if (!match || typeof match !== "object") {
+        return null;
+    }
+
+    const id = Number(match.id);
+    if (!Number.isInteger(id) || id < 1) {
+        return null;
+    }
+
+    return {
+        id,
+        userName: String(match.user_name ?? ""),
+        firstName: String(match.first_name ?? ""),
+        lastName: String(match.last_name ?? ""),
+        avatar: String(match.avatar ?? ""),
+    };
+}
+
+function getMatchName(match) {
+    if (!match) {
+        return "";
+    }
+
+    return [match.firstName, match.lastName].filter(Boolean).join(" ")
+        || match.userName
+        || `User #${match.id}`;
+}
+
+function getAvatarURL(avatar) {
+    return avatar ? `/backend${avatar}` : "/1.png";
+}
+
 function formatMessageTime(value) {
     if (!value) {
         return "";
@@ -30,12 +63,14 @@ export default function Chat() {
     const { send, subscribe, status } = useWebSocket();
     const [searchParams, setSearchParams] = useSearchParams();
     const selectedUserParam = searchParams.get("user") || "";
+    const [matches, setMatches] = useState([]);
     const [conversations, setConversations] = useState([]);
     const [activeConversationID, setActiveConversationID] = useState(null);
-    const [recipientID, setRecipientID] = useState(selectedUserParam);
+    const [recipientID, setRecipientID] = useState(null);
     const [messages, setMessages] = useState([]);
     const [draft, setDraft] = useState("");
     const [error, setError] = useState("");
+    const [isLoadingSidebar, setIsLoadingSidebar] = useState(true);
     const messagesEndRef = useRef(null);
     const pendingReadMessageIDsRef = useRef(new Set());
 
@@ -51,31 +86,98 @@ export default function Chat() {
         return getPeerID(activeConversation, userID);
     }, [activeConversation, recipientID, userID]);
 
-    useEffect(() => {
-        setRecipientID(selectedUserParam);
-    }, [selectedUserParam]);
+    const matchesByUserID = useMemo(
+        () => new Map(matches.map((match) => [match.id, match])),
+        [matches]
+    );
+
+    const activeMatch = matchesByUserID.get(Number(activeRecipientID)) || null;
+    const activeRecipientName = activeMatch
+        ? getMatchName(activeMatch)
+        : activeRecipientID
+            ? `User #${activeRecipientID}`
+            : "Select a match";
 
     useEffect(() => {
-        const loadConversations = async () => {
+        if (!userID) {
+            return undefined;
+        }
+
+        let isCancelled = false;
+
+        const loadSidebar = async () => {
             try {
-                const response = await axiosInstance.get("/backend/api/accounts/conversations");
-                const items = Array.isArray(response.data?.conversations)
-                    ? response.data.conversations
+                const [matchesResponse, conversationsResponse] = await Promise.all([
+                    axiosInstance.get("/backend/api/accounts/matches"),
+                    axiosInstance.get("/backend/api/accounts/conversations"),
+                ]);
+
+                if (isCancelled) {
+                    return;
+                }
+
+                const matchItems = Array.isArray(matchesResponse.data?.matches)
+                    ? matchesResponse.data.matches.map(normalizeMatch).filter(Boolean)
+                    : [];
+                const conversationItems = Array.isArray(conversationsResponse.data?.conversations)
+                    ? conversationsResponse.data.conversations
                     : [];
 
-                setConversations(items);
-
-                if (!selectedUserParam && items.length > 0) {
-                    setActiveConversationID(items[0].id);
-                }
+                setMatches(matchItems);
+                setConversations(conversationItems);
             } catch (requestError) {
-                console.log("CONVERSATIONS ERROR", requestError);
-                setError("Could not load conversations");
+                if (!isCancelled) {
+                    console.log("CHAT SIDEBAR ERROR", requestError);
+                    setError("Could not load matches and conversations");
+                }
+            } finally {
+                if (!isCancelled) {
+                    setIsLoadingSidebar(false);
+                }
             }
         };
 
-        loadConversations();
-    }, [selectedUserParam]);
+        loadSidebar();
+
+        return () => {
+            isCancelled = true;
+        };
+    }, [userID]);
+
+    useEffect(() => {
+        if (isLoadingSidebar || !userID) {
+            return;
+        }
+
+        const selectedUserID = Number(selectedUserParam);
+        if (Number.isInteger(selectedUserID) && selectedUserID > 0) {
+            const selectedConversation = conversations.find(
+                (conversation) => getPeerID(conversation, userID) === selectedUserID
+            );
+            const isKnownMatch = matches.some((match) => match.id === selectedUserID);
+
+            if (selectedConversation || isKnownMatch) {
+                setRecipientID(selectedUserID);
+                setActiveConversationID(selectedConversation?.id ?? null);
+                return;
+            }
+
+            setRecipientID(null);
+            setActiveConversationID(null);
+            setError("This user is not an active match");
+            return;
+        }
+
+        if (conversations.length > 0) {
+            const firstConversation = conversations[0];
+            setActiveConversationID(firstConversation.id);
+            setRecipientID(getPeerID(firstConversation, userID));
+            return;
+        }
+
+        setActiveConversationID(null);
+        setRecipientID(null);
+    }, [conversations, isLoadingSidebar, matches, selectedUserParam, userID]);
 
     useEffect(() => {
         if (!activeConversationID) {
@@ -115,8 +217,13 @@ export default function Chat() {
                 const belongsToOpenConversation =
                     payload.conversation_id === activeConversationID;
                 const isOwnMessage = payload.sender_id === userID;
+                const messagePeerID = isOwnMessage
+                    ? payload.recipient_id
+                    : payload.sender_id;
+                const belongsToSelectedMatch =
+                    !activeConversationID && messagePeerID === activeRecipientID;
 
-                if (!belongsToOpenConversation && !isOwnMessage) {
+                if (!belongsToOpenConversation && !isOwnMessage && !belongsToSelectedMatch) {
                     return currentMessages;
                 }
                 if (currentMessages.some((message) => message.id === nextMessage.id)) {
@@ -140,10 +247,14 @@ export default function Chat() {
                 return [nextConversation, ...existingConversations];
             });
 
-            if (payload.sender_id === userID) {
+            const messagePeerID = payload.sender_id === userID
+                ? payload.recipient_id
+                : payload.sender_id;
+
+            if (payload.sender_id === userID || messagePeerID === activeRecipientID) {
                 setActiveConversationID(payload.conversation_id);
-                setRecipientID(String(payload.recipient_id));
-                setSearchParams({ user: String(payload.recipient_id) });
+                setRecipientID(messagePeerID);
+                setSearchParams({ user: String(messagePeerID) });
             }
         });
 
@@ -166,7 +277,7 @@ export default function Chat() {
             unsubscribeMessageRead();
             unsubscribeError();
         };
-    }, [activeConversationID, setSearchParams, subscribe, userID]);
+    }, [activeConversationID, activeRecipientID, setSearchParams, subscribe, userID]);
 
     useEffect(() => {
         if (status !== "connected" || !activeConversationID || !userID) {
@@ -207,8 +318,20 @@ export default function Chat() {
     const selectConversation = (conversation) => {
         const peerID = getPeerID(conversation, userID);
         setActiveConversationID(conversation.id);
-        setRecipientID(peerID ? String(peerID) : "");
+        setRecipientID(peerID || null);
         setSearchParams(peerID ? { user: String(peerID) } : {});
+        setError("");
+    };
+
+    const selectMatch = (match) => {
+        const existingConversation = conversations.find(
+            (conversation) => getPeerID(conversation, userID) === match.id
+        );
+
+        setRecipientID(match.id);
+        setActiveConversationID(existingConversation?.id ?? null);
+        setSearchParams({ user: String(match.id) });
+        setError("");
     };
 
     const sendMessage = (event) => {
@@ -243,47 +366,70 @@ export default function Chat() {
                     <h2>Chat</h2>
                 </div>
 
-                <label className="chat-recipient-label" htmlFor="chat-recipient">
-                    Recipient ID
-                </label>
-                <input
-                    id="chat-recipient"
-                    className="chat-recipient-input"
-                    value={recipientID}
-                    inputMode="numeric"
-                    placeholder="User ID"
-                    onChange={(event) => {
-                        setRecipientID(event.target.value.replace(/\D/g, ""));
-                        setActiveConversationID(null);
-                    }}
-                />
+                {isLoadingSidebar ? (
+                    <p className="chat-empty">Loading chat...</p>
+                ) : (
+                    <>
+                        <section className="chat-sidebar-section" aria-labelledby="chat-matches-title">
+                            <h3 id="chat-matches-title">Matches</h3>
+                            <div className="chat-matches">
+                                {matches.length > 0 ? matches.map((match) => {
+                                    const isActive = match.id === activeRecipientID;
+                                    return (
+                                        <button
+                                            key={match.id}
+                                            className={`chat-match${isActive ? " is-active" : ""}`}
+                                            type="button"
+                                            onClick={() => selectMatch(match)}
+                                        >
+                                            <img
+                                                src={getAvatarURL(match.avatar)}
+                                                alt=""
+                                            />
+                                            <span>
+                                                <strong>{getMatchName(match)}</strong>
+                                                <small>@{match.userName || `user${match.id}`}</small>
+                                            </span>
+                                        </button>
+                                    );
+                                }) : (
+                                    <p className="chat-empty">No matches yet</p>
+                                )}
+                            </div>
+                        </section>
 
-                <div className="chat-conversations">
-                    {conversations.length > 0 ? conversations.map((conversation) => {
-                        const peerID = getPeerID(conversation, userID);
-                        const isActive = conversation.id === activeConversationID;
-                        return (
-                            <button
-                                key={conversation.id}
-                                className={`chat-conversation${isActive ? " is-active" : ""}`}
-                                type="button"
-                                onClick={() => selectConversation(conversation)}
-                            >
-                                <span>User #{peerID}</span>
-                                <small>Open conversation</small>
-                            </button>
-                        );
-                    }) : (
-                        <p className="chat-empty">No conversations yet</p>
-                    )}
-                </div>
+                        <section className="chat-sidebar-section" aria-labelledby="chat-conversations-title">
+                            <h3 id="chat-conversations-title">Conversations</h3>
+                            <div className="chat-conversations">
+                                {conversations.length > 0 ? conversations.map((conversation) => {
+                                    const peerID = getPeerID(conversation, userID);
+                                    const peerMatch = matchesByUserID.get(peerID);
+                                    const isActive = conversation.id === activeConversationID;
+                                    return (
+                                        <button
+                                            key={conversation.id}
+                                            className={`chat-conversation${isActive ? " is-active" : ""}`}
+                                            type="button"
+                                            onClick={() => selectConversation(conversation)}
+                                        >
+                                            <span>{peerMatch ? getMatchName(peerMatch) : `User #${peerID}`}</span>
+                                            <small>Open conversation</small>
+                                        </button>
+                                    );
+                                }) : (
+                                    <p className="chat-empty">No conversations yet</p>
+                                )}
+                            </div>
+                        </section>
+                    </>
+                )}
             </aside>
 
             <section className="chat-panel" aria-label="Messages">
                 <div className="chat-panel-header">
                     <div>
                         <p className="chat-kicker">Conversation</p>
-                        <h2>{activeRecipientID ? `User #${activeRecipientID}` : "Select a user"}</h2>
+                        <h2>{activeRecipientName}</h2>
                     </div>
                 </div>
 

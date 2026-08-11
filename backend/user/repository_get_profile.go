@@ -9,7 +9,29 @@ import (
 )
 
 func (repo *PostgresRepository) GetProfile(ctx context.Context, userID uint) (models.User, error) {
-	const query = `SELECT id, user_name, first_name, last_name, email, avatar, gender, preferences, bio, interests FROM users WHERE id = $1`
+	const query = `
+	SELECT
+		u.id,
+		u.user_name,
+		u.first_name,
+		u.last_name,
+		u.email,
+		u.is_completed,
+		u.avatar,
+		u.gender,
+		u.preferences,
+		u.bio,
+		u.interests,
+		u.birth_date,
+		u.latitude,
+		u.longitude,
+		u.location_source,
+		u.location_name,
+		u.location_consent_at,
+		u.last_seen_at,
+		(SELECT COUNT(*) FROM profile_decisions as pd WHERE pd.target_user_id = u.id AND pd.decision = 'like') as fame_rating
+	FROM users AS u WHERE u.id = $1
+	`
 	var profile models.User
 	var rawInterests []byte
 
@@ -19,11 +41,20 @@ func (repo *PostgresRepository) GetProfile(ctx context.Context, userID uint) (mo
 		&profile.FirstName,
 		&profile.LastName,
 		&profile.Email,
+		&profile.IsCompleted,
 		&profile.Avatar,
 		&profile.Gender,
 		&profile.Preferences,
 		&profile.Bio,
 		&rawInterests,
+		&profile.BirthDate,
+		&profile.Latitude,
+		&profile.Longitude,
+		&profile.LocationSource,
+		&profile.LocationName,
+		&profile.LocationConsentAt,
+		&profile.LastSeenAt,
+		&profile.FameRating,
 	)
 	if errors.Is(err, sql.ErrNoRows) {
 		return models.User{}, UserErrors.UserNotFound

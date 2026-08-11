@@ -1,18 +1,23 @@
 package user
 
 import (
+	"backend/api"
 	"backend/middleware"
 	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
+	"strings"
+	"time"
 )
 
 type CompleteProfileRequest struct {
-	Gender      string   `json:"gender"`
-	Preferences string   `json:"preferences"`
-	Bio         string   `json:"bio"`
-	Interests   []string `json:"interests"`
+	Gender      string           `json:"gender"`
+	Preferences string           `json:"preferences"`
+	Bio         string           `json:"bio"`
+	Interests   []string         `json:"interests"`
+	BirthDate   string           `json:"birth_date"`
+	Location    *LocationRequest `json:"location"`
 }
 
 type CompleteProfileResponse struct {
@@ -27,8 +32,12 @@ func (h *UserHandler) CompleteProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req CompleteProfileRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+	if !api.DecodeJSONRequest(w, r, &req) {
+		return
+	}
+	birthDate, err := time.Parse(time.DateOnly, strings.TrimSpace(req.BirthDate))
+	if err != nil {
+		http.Error(w, "Birth date must use YYYY-MM-DD format", http.StatusBadRequest)
 		return
 	}
 	isCompleted, err := h.service.CompleteProfile(
@@ -39,13 +48,20 @@ func (h *UserHandler) CompleteProfile(w http.ResponseWriter, r *http.Request) {
 			Preferences: req.Preferences,
 			Bio:         req.Bio,
 			Interests:   req.Interests,
+			BirthDate:   birthDate,
+			Location:    locationInput(req.Location),
 		},
 	)
 	switch {
-	case errors.Is(err, UserErrors.ProfileFieldsMissing):
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	case errors.Is(err, UserErrors.InvalidGenderPreference):
+	case errors.Is(err, UserErrors.ProfileFieldsMissing) ||
+		errors.Is(err, UserErrors.InvalidGenderPreference) ||
+		errors.Is(err, UserErrors.UserUnderage) ||
+		errors.Is(err, UserErrors.InvalidLocation) ||
+		errors.Is(err, UserErrors.InvalidLocationSource) ||
+		errors.Is(err, UserErrors.LocationConsentRequired) ||
+		errors.Is(err, UserErrors.ManualLocationNameMissing) ||
+		errors.Is(err, UserErrors.InvalidInterestTag) ||
+		errors.Is(err, UserErrors.ProfilePictureRequired):
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	case errors.Is(err, UserErrors.UserNotFound):

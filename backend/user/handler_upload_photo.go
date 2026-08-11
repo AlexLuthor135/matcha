@@ -70,7 +70,7 @@ func (h *UserHandler) UploadPhoto(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Photos must be JPEG, PNG or WEBP", http.StatusUnsupportedMediaType)
 		return
 	case errors.Is(err, UserErrors.PhotoLimitExceeded):
-		http.Error(w, "You can have no more than 5 photos", http.StatusConflict)
+		http.Error(w, "You can have no more than 5 pictures including your profile picture", http.StatusConflict)
 		return
 	case errors.Is(err, UserErrors.UserNotFound):
 		http.Error(w, "User not found", http.StatusNotFound)

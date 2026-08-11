@@ -3,27 +3,71 @@ package user
 import (
 	"backend/models"
 	"context"
+	"database/sql"
+	"errors"
 )
 
-func (repo *PostgresRepository) SaveProfileDecision(ctx context.Context, userID uint, targetUserID uint, decision models.ProfileDecisionValue) (models.ProfileDecision, bool, error) {
+type SaveProfileDecisionResult struct {
+	ProfileDecision models.ProfileDecision
+	IsMatch         bool
+	DecisionChanged bool
+	MatchEnded      bool
+}
+
+func (repo *PostgresRepository) SaveProfileDecision(ctx context.Context, userID uint, targetUserID uint, decision models.ProfileDecisionValue) (SaveProfileDecisionResult, error) {
 	tx, err := repo.db.BeginTx(ctx, nil)
 	if err != nil {
-		return models.ProfileDecision{}, false, err
+		return SaveProfileDecisionResult{}, err
 	}
 	defer tx.Rollback()
+	const lockUserQuery = `SELECT id FROM users WHERE id = $1 FOR UPDATE`
+	var lockedUserID uint
+	err = tx.QueryRowContext(ctx, lockUserQuery, userID).Scan(&lockedUserID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return SaveProfileDecisionResult{}, UserErrors.UserNotFound
+	}
+	if err != nil {
+		return SaveProfileDecisionResult{}, err
+	}
 	const userExistQuery = `SELECT EXISTS (SELECT 1 FROM users WHERE id = $1), EXISTS (SELECT 1 FROM users WHERE id = $2)`
 	var userExists bool
 	var targetUserExists bool
 	err = tx.QueryRowContext(ctx, userExistQuery, userID, targetUserID).Scan(&userExists, &targetUserExists)
 	if err != nil {
-		return models.ProfileDecision{}, false, err
+		return SaveProfileDecisionResult{}, err
 	}
 	if !userExists {
-		return models.ProfileDecision{}, false, UserErrors.UserNotFound
+		return SaveProfileDecisionResult{}, UserErrors.UserNotFound
 	}
 	if !targetUserExists {
-		return models.ProfileDecision{}, false, UserErrors.TargetUserNotFound
+		return SaveProfileDecisionResult{}, UserErrors.TargetUserNotFound
 	}
+	const blockExistsQuery = `SELECT EXISTS (SELECT 1 FROM user_blocks AS ub WHERE (ub.blocker_id = $1 AND ub.blocked_user_id = $2) OR (ub.blocker_id = $2 AND ub.blocked_user_id = $1))`
+	var blockExists bool
+	err = tx.QueryRowContext(ctx, blockExistsQuery, userID, targetUserID).Scan(&blockExists)
+	if err != nil {
+		return SaveProfileDecisionResult{}, err
+	}
+	if blockExists {
+		return SaveProfileDecisionResult{}, UserErrors.TargetUserNotFound
+	}
+	const previousDecisionQuery = `SELECT decision FROM profile_decisions WHERE user_id = $1 AND target_user_id = $2 FOR UPDATE`
+	var previousDecision models.ProfileDecisionValue
+	hasPreviousDecision := true
+	err = tx.QueryRowContext(ctx, previousDecisionQuery, userID, targetUserID).Scan(&previousDecision)
+	if errors.Is(err, sql.ErrNoRows) {
+		hasPreviousDecision = false
+	} else if err != nil {
+		return SaveProfileDecisionResult{}, err
+	}
+	const reverseLikeQuery = `SELECT EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $1 AND target_user_id = $2 AND decision = 'like')`
+	var reverseLikeExists bool
+	err = tx.QueryRowContext(ctx, reverseLikeQuery, targetUserID, userID).Scan(&reverseLikeExists)
+	if err != nil {
+		return SaveProfileDecisionResult{}, err
+	}
+	wasMatch := hasPreviousDecision && previousDecision == models.ProfileDecisionLike && reverseLikeExists
+	decisionChanged := !hasPreviousDecision || previousDecision != decision
 	const saveDecisionQuery = `
 		INSERT INTO profile_decisions (user_id, target_user_id, decision)
 		VALUES ($1, $2, $3)
@@ -45,19 +89,13 @@ func (repo *PostgresRepository) SaveProfileDecision(ctx context.Context, userID 
 		&savedDecision.TargetUserID,
 		&savedDecision.Decision)
 	if err != nil {
-		return models.ProfileDecision{}, false, err
+		return SaveProfileDecisionResult{}, err
 	}
-	var isMatch bool
-	if savedDecision.Decision == models.ProfileDecisionLike {
-		const reverseLikeQuery = `SELECT EXISTS (SELECT 1 FROM profile_decisions WHERE user_id = $1 AND target_user_id = $2 AND decision = 'like')`
-		err = tx.QueryRowContext(ctx, reverseLikeQuery, targetUserID, userID).Scan(&isMatch)
-		if err != nil {
-			return models.ProfileDecision{}, false, err
-		}
-	}
+	isMatch := savedDecision.Decision == models.ProfileDecisionLike && reverseLikeExists
+	matchEnded := wasMatch && decisionChanged && !isMatch
 	if err := tx.Commit(); err != nil {
-		return models.ProfileDecision{}, false, err
+		return SaveProfileDecisionResult{}, err
 	}
-	return savedDecision, isMatch, nil
+	return SaveProfileDecisionResult{ProfileDecision: savedDecision, IsMatch: isMatch, DecisionChanged: decisionChanged, MatchEnded: matchEnded}, nil
 
 }

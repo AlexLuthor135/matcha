@@ -42,7 +42,7 @@ func TestServiceSaveProfileDecisionRejectsInvalidInput(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			service := NewService(&fakeUserRepository{}, &fakeImageStorage{})
 
-			_, _, err := service.SaveProfileDecision(
+			_, err := service.SaveProfileDecision(
 				context.Background(),
 				test.userID,
 				test.targetUserID,
@@ -68,12 +68,18 @@ func TestServiceSaveProfileDecisionDelegatesToRepository(t *testing.T) {
 	}
 
 	repository := &fakeUserRepository{
+		getAvatarURLFn: func(_ context.Context, gotUserID uint) (string, error) {
+			if gotUserID != userID {
+				t.Fatalf("GetAvatarURL() userID = %d, want %d", gotUserID, userID)
+			}
+			return "/uploads/avatars/user.jpg", nil
+		},
 		saveDecisionFn: func(
 			_ context.Context,
 			gotUserID uint,
 			gotTargetUserID uint,
 			gotDecision models.ProfileDecisionValue,
-		) (models.ProfileDecision, bool, error) {
+		) (SaveProfileDecisionResult, error) {
 			if gotUserID != userID || gotTargetUserID != targetUserID || gotDecision != models.ProfileDecisionLike {
 				t.Fatalf(
 					"SaveProfileDecision() arguments = (%d, %d, %q), want (%d, %d, %q)",
@@ -85,11 +91,16 @@ func TestServiceSaveProfileDecisionDelegatesToRepository(t *testing.T) {
 					models.ProfileDecisionLike,
 				)
 			}
-			return wantDecision, true, nil
+			return SaveProfileDecisionResult{
+				ProfileDecision: wantDecision,
+				IsMatch:         true,
+				DecisionChanged: true,
+				MatchEnded:      true,
+			}, nil
 		},
 	}
 
-	decision, isMatch, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
+	result, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
 		context.Background(),
 		userID,
 		targetUserID,
@@ -98,32 +109,100 @@ func TestServiceSaveProfileDecisionDelegatesToRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SaveProfileDecision() unexpected error: %v", err)
 	}
-	if decision != wantDecision {
-		t.Fatalf("SaveProfileDecision() decision = %+v, want %+v", decision, wantDecision)
+	if result.ProfileDecision != wantDecision {
+		t.Fatalf("SaveProfileDecision() decision = %+v, want %+v", result.ProfileDecision, wantDecision)
 	}
-	if !isMatch {
+	if !result.IsMatch {
 		t.Fatal("SaveProfileDecision() isMatch = false, want true")
+	}
+	if !result.DecisionChanged {
+		t.Fatal("SaveProfileDecision() decisionChanged = false, want true")
+	}
+	if !result.MatchEnded {
+		t.Fatal("SaveProfileDecision() matchEnded = false, want true")
 	}
 }
 
 func TestServiceSaveProfileDecisionPropagatesRepositoryError(t *testing.T) {
 	repositoryError := errors.New("database unavailable")
 	repository := &fakeUserRepository{
+		getAvatarURLFn: func(context.Context, uint) (string, error) {
+			return "/uploads/avatars/user.jpg", nil
+		},
 		saveDecisionFn: func(
 			context.Context,
 			uint,
 			uint,
 			models.ProfileDecisionValue,
-		) (models.ProfileDecision, bool, error) {
-			return models.ProfileDecision{}, false, repositoryError
+		) (SaveProfileDecisionResult, error) {
+			return SaveProfileDecisionResult{}, repositoryError
 		},
 	}
 
-	_, _, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
+	_, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
 		context.Background(),
 		10,
 		20,
 		models.ProfileDecisionLike,
+	)
+	if !errors.Is(err, repositoryError) {
+		t.Fatalf("SaveProfileDecision() error = %v, want %v", err, repositoryError)
+	}
+}
+
+func TestServiceSaveProfileDecisionRequiresPictureForEveryDecision(t *testing.T) {
+	tests := []struct {
+		name     string
+		decision models.ProfileDecisionValue
+	}{
+		{
+			name:     "like",
+			decision: models.ProfileDecisionLike,
+		},
+		{
+			name:     "dislike",
+			decision: models.ProfileDecisionDislike,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			repository := &fakeUserRepository{
+				getAvatarURLFn: func(context.Context, uint) (string, error) {
+					return "   ", nil
+				},
+			}
+
+			_, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
+				context.Background(),
+				10,
+				20,
+				test.decision,
+			)
+			if !errors.Is(err, UserErrors.ProfilePictureRequired) {
+				t.Fatalf(
+					"SaveProfileDecision() error = %v, want %v",
+					err,
+					UserErrors.ProfilePictureRequired,
+				)
+			}
+		})
+	}
+}
+
+func TestServiceSaveProfileDecisionPropagatesAvatarLookupError(t *testing.T) {
+	repositoryError := errors.New("avatar lookup failed")
+	repository := &fakeUserRepository{
+		getAvatarURLFn: func(context.Context, uint) (string, error) {
+			return "", repositoryError
+		},
+	}
+
+	_, err := NewService(repository, &fakeImageStorage{}).SaveProfileDecision(
+		context.Background(),
+		10,
+		20,
+		models.ProfileDecisionDislike,
 	)
 	if !errors.Is(err, repositoryError) {
 		t.Fatalf("SaveProfileDecision() error = %v, want %v", err, repositoryError)
