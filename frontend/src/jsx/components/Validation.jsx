@@ -3,8 +3,8 @@ export function passwordValidation(password, confirmPassword) {
         alert("NOT SAME PASSWORD!")
         return true;
     }
-    if(password.length < 8){
-        alert('PASSWORD MUST CONTAIN AT LEAST 8 CHARACTERS');
+    if(Array.from(password).length < 12){
+        alert('PASSWORD MUST CONTAIN AT LEAST 12 CHARACTERS');
         return true;
     }
     if(!/[A-Z]/.test(password)){

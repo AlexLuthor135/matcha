@@ -23,7 +23,8 @@ func isValidUserName(userName string) bool {
 }
 
 func isValidPassword(password string) bool {
-	if len(password) < 8 || len([]byte(password)) > 72 || isCommonPassword(password) {
+	passwordLength := utf8.RuneCountInString(password)
+	if passwordLength < 12 || len(password) > 72 || isCommonPassword(password) {
 		return false
 	}
 	var hasUpper, hasLower, hasNumber, hasSpecial bool

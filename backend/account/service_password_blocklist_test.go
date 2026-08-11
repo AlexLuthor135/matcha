@@ -16,6 +16,9 @@ func TestIsCommonPassword(t *testing.T) {
 		{name: "case insensitive", password: "QWERTY1!", want: true},
 		{name: "surrounding whitespace", password: "  Welcome1!  ", want: true},
 		{name: "Unicode case insensitive", password: "ПАРОЛЬ1!", want: true},
+		{name: "common English password", password: "Football1!", want: true},
+		{name: "common German password", password: "Passwort1!", want: true},
+		{name: "common French password", password: "MotDePasse1!", want: true},
 		{name: "unlisted password", password: "River7!Orchid", want: false},
 	}
 
@@ -34,6 +37,18 @@ func TestIsValidPasswordRejectsBlocklistedPassword(t *testing.T) {
 	}
 	if !isValidPassword("River7!Orchid") {
 		t.Fatal("isValidPassword() rejected an unlisted password that meets the composition rules")
+	}
+}
+
+func TestIsValidPasswordRejectsShortPassword(t *testing.T) {
+	if isValidPassword("Short1!") {
+		t.Fatal("isValidPassword() accepted a password shorter than 12 characters")
+	}
+}
+
+func TestIsValidPasswordUsesUnicodeCharacterLength(t *testing.T) {
+	if isValidPassword("ÄÄÄÄÄäää1!x") {
+		t.Fatal("isValidPassword() counted UTF-8 bytes instead of Unicode characters")
 	}
 }
 
