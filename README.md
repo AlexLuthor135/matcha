@@ -16,19 +16,18 @@ Implemented backend areas:
 - avatar upload and replacement;
 - profile-photo upload and deletion with four gallery photos plus one required profile picture;
 - conversations, stored chat messages, read receipts, and WebSocket delivery;
-- persisted match notifications, notification read receipts, and realtime notification delivery;
+- persisted match, like, unlike, profile-view, and message notifications;
+- profile-view/liker history, blocking, reporting, location-aware discovery, filters, and sorting;
 - PostgreSQL migrations through Goose;
-- Handler → Service → Repository separation for `user`, `chat`, and `notification`;
+- feature packages with Handler → Service → Repository separation;
 - local image storage behind an `ImageStorage` interface;
-- unit tests for user, chat, and notification services and handlers;
-- PostgreSQL integration tests for user, chat, and notification repositories.
+- unit tests for account, profile, discovery, relationship, chat, notification, and realtime behavior;
+- PostgreSQL integration tests plus opt-in live HTTP/WebSocket scenarios.
 
 Not implemented yet:
 
-- profile-view history and profile-view notifications;
-- the remaining Matcha features such as location-based discovery, blocking, and reporting;
 - production-grade object storage and background cleanup of orphaned files;
-- a complete automated test suite for every user/account endpoint.
+- deployment-specific email, storage, monitoring, and operational hardening.
 
 ## Architecture
 
@@ -81,7 +80,20 @@ A repository owns persistence logic:
 - exact `Scan` order;
 - conversion of `sql.ErrNoRows` and PostgreSQL constraint errors into package errors.
 
-Only `PostgresRepository` stores `*sql.DB`. `UserHandler` does not have a database field.
+Only each feature's `PostgresRepository` stores `*sql.DB`. Handlers and services do not have database fields.
+
+### Feature boundaries
+
+The former all-purpose `user` package is intentionally split by behavior:
+
+| Package | Owns |
+| --- | --- |
+| `account` | registration, login/logout, sessions, email verification, password reset, account settings |
+| `profile` | the authenticated user's profile, completion, interests, location, avatar, photos, last-seen recording |
+| `discovery` | profile feed, search, filters, distance calculation, and ranking |
+| `relationship` | public profiles, likes/dislikes, matches, profile views/likers, blocks, and reports |
+
+Each package owns its request/response types, errors, handler, service, repository interface, and PostgreSQL implementation. The repository interface is declared by the service that consumes it, so there is no global interface containing unrelated methods. Shared database-shaped entities remain in `models`; HTTP request types and feature errors do not.
 
 ### Models
 
@@ -93,6 +105,11 @@ The important backend layout is:
 
 ```text
 backend/
+├── account/                    account identity and authentication
+│   ├── handler*.go
+│   ├── service*.go
+│   ├── repository*.go
+│   └── *_test.go
 ├── api/                       token creation and refresh
 ├── chat/
 │   ├── handler*.go
@@ -103,6 +120,9 @@ backend/
 │   ├── migrations/            Goose migration history
 │   ├── schema/                per-table schema reference
 │   └── schema.sql             reference schema entry point
+├── discovery/                  profile feed, search, filtering and ranking
+├── e2e/                        opt-in live HTTP security/account/profile tests
+├── integration/                cross-feature PostgreSQL repository test
 ├── middleware/                authentication middleware
 ├── models/                    shared data structures
 ├── notification/
@@ -110,13 +130,12 @@ backend/
 │   ├── service*.go
 │   ├── repository*.go
 │   └── *_test.go
+├── profile/                    own profile, location and image management
 ├── realtime/                  WebSocket clients and hub
-├── user/
+├── relationship/              public profile and user relationships
 │   ├── handler*.go
 │   ├── service*.go
 │   ├── repository*.go
-│   ├── image_storage.go
-│   ├── local_image_storage.go
 │   └── *_test.go
 ├── db.go
 ├── entrypoint.sh
@@ -713,7 +732,12 @@ Public routes:
 ```text
 POST /api/register
 POST /api/login
+POST /api/email-verification/resend
+POST /api/password/forgot
+POST /api/password/reset
+GET  /api/verify-email
 POST /api/accounts/token/refresh
+POST /api/accounts/logout/
 ```
 
 Authenticated routes are mounted below `/api/accounts`:
@@ -721,15 +745,18 @@ Authenticated routes are mounted below `/api/accounts`:
 ```text
 GET    /verify_login
 GET    /profile
+GET    /profile/views
+GET    /profile/likes
 GET    /profiles/feed
+GET    /profiles/search
 GET    /profiles/{targetUserID}
 GET    /matches
 GET    /ws
 GET    /conversations
 GET    /conversations/{conversationID}/messages
 GET    /notifications
+GET    /interests
 
-POST   /logout/
 POST   /profile/complete
 POST   /avatar
 POST   /photos
@@ -741,8 +768,11 @@ PATCH  /messages/{messageID}/read
 PATCH  /notifications/{notificationID}/read
 
 PUT    /profiles/{targetUserID}/decision
+PUT    /profiles/{targetUserID}/block
+PUT    /profiles/{targetUserID}/report
 
 DELETE /photos/{photoID}
+DELETE /profiles/{targetUserID}/block
 ```
 
 For example, the externally proxied profile endpoint is:
@@ -755,7 +785,7 @@ Go `http.ServeMux` variables use `{photoID}`, not `:photoID`.
 
 ## Error handling
 
-Package errors live in `user/errors.go`, `chat/errors.go`, and `notification/errors.go`. Services and repositories return these stable errors; handlers map them to HTTP responses.
+Package errors live beside their feature, for example `account/errors.go`, `profile/errors.go`, `discovery/errors.go`, `relationship/errors.go`, `chat/errors.go`, and `notification/errors.go`. Services and repositories return these stable errors; handlers map them to HTTP responses.
 
 Typical mapping:
 
@@ -813,10 +843,10 @@ With Docker running, the simplest command is:
 docker compose exec web go test ./...
 ```
 
-To run only user repository integration tests (photos and profile decisions):
+To run only the cross-feature account/profile/discovery/relationship repository integration test:
 
 ```sh
-docker compose exec web go test ./user -run TestPostgresUserRepositoryIntegration -v
+docker compose exec web go test ./integration -run TestPostgresFeatureRepositoriesIntegration -v
 ```
 
 ### Frontend

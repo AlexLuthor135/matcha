@@ -418,7 +418,9 @@ func TestLiveRequiredNotificationAndBlockFlow(t *testing.T) {
 			continue
 		}
 		if notification.ReadAt != nil {
-			t.Fatalf("new %s notification is already read", notification.Type)
+			// A previous live run may have left an older, already-read row for
+			// the same sender and notification type. Keep looking for the new row.
+			continue
 		}
 		requiredUnreadTypes[notification.Type] = true
 		if notification.Type == "profile_view" {
